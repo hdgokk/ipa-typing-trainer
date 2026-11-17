@@ -1,0 +1,2159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IPA 打字课 · 工作台</title>
+<style>
+:root{
+  --bg:#ffffff;
+  --surface:#f4f6f7;
+  --surface-2:#eef1f2;
+  --surface-3:#e5e9eb;
+  --line:rgba(16,20,26,.11);
+  --line-strong:rgba(16,20,26,.20);
+  --text:#1a1d21;
+  --text-2:#5a6068;
+  --text-3:#5e656e;
+  --accent:#0d6e67;
+  --accent-dim:rgba(13,110,103,.09);
+  --accent-line:rgba(13,110,103,.34);
+  --bad:#b83528;
+  --bad-dim:rgba(184,53,40,.10);
+  --warn:#965200;
+  --key:#3b5bdb;
+  --shadow:0 1px 2px rgba(16,20,26,.05),0 8px 24px rgba(16,20,26,.06);
+  --ease:cubic-bezier(.22,1,.36,1);
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  --mono:"SF Mono",ui-monospace,Menlo,Consolas,"Courier New",monospace;
+  --ipa:"IPAPANNEW","Doulos SIL","Charis SIL",Cambria,"Times New Roman",serif;
+  --left-w:264px;
+  --right-w:336px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:var(--font);overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+  -webkit-user-select:none;user-select:none;
+}
+::selection{background:rgba(13,110,103,.20);color:#0b2e2a}
+button{font-family:inherit}
+/* 键盘焦点可见性：浅色底上必须显式定义，否则焦点环几乎不可见 */
+button:focus-visible,
+a:focus-visible{
+  outline:2px solid var(--accent);outline-offset:2px;border-radius:6px;
+}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:rgba(16,20,26,.16);border-radius:9px}
+::-webkit-scrollbar-thumb:hover{background:rgba(16,20,26,.28)}
+::-webkit-scrollbar-track{background:transparent}
+
+#app{
+  display:grid;
+  grid-template-columns:var(--left-w) minmax(0,1fr) var(--right-w);
+  height:100vh;
+}
+#app.right-hidden{grid-template-columns:var(--left-w) minmax(0,1fr) 0}
+#app.left-hidden{grid-template-columns:0 minmax(0,1fr) var(--right-w)}
+
+/* ============ 左：目录 / 进度 ============ */
+#left{
+  background:var(--surface);
+  border-right:1px solid var(--line);
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+#left-head{padding:18px 18px 14px;border-bottom:1px solid var(--line)}.brand{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.brand-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px rgba(13,110,103,.16)}
+.brand-name{font-size:13px;font-weight:500;letter-spacing:.08em}
+.brand-ver{font-size:10px;color:var(--text-3);letter-spacing:.1em;margin-left:auto}
+.prog-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px}
+.prog-label{font-size:11px;color:var(--text-3);letter-spacing:.14em}
+.prog-num{font-size:11px;color:var(--accent);font-variant-numeric:tabular-nums;letter-spacing:.06em}
+.prog-track{height:3px;background:rgba(16,20,26,.10);border-radius:99px;overflow:hidden}
+.prog-fill{height:100%;width:0;background:linear-gradient(90deg,var(--accent),rgba(13,110,103,.55));border-radius:99px;transition:width .6s var(--ease)}
+#toc{flex:1;overflow-y:auto;padding:10px 10px 20px}
+.toc-sec{font-size:10px;color:var(--text-3);letter-spacing:.18em;padding:12px 8px 7px}
+.toc-free{
+  display:flex;align-items:center;gap:9px;width:100%;
+  background:var(--surface-2);border:1px solid var(--line);
+  border-radius:9px;padding:9px 11px;margin-bottom:4px;
+  color:var(--text-2);font-size:12.5px;cursor:pointer;text-align:left;
+  transition:all .25s var(--ease);
+}
+.toc-free:hover{border-color:var(--line-strong);color:var(--text)}
+.toc-free.on{background:var(--accent-dim);border-color:var(--accent-line);color:var(--accent)}
+.toc-free .ic{font-size:13px;opacity:.85}
+.toc-free .ct{margin-left:auto;font-size:10.5px;color:var(--text-3);font-variant-numeric:tabular-nums}
+.toc-free.on .ct{color:var(--accent)}
+
+.toc-item{
+  display:flex;align-items:center;gap:8px;width:100%;
+  background:none;border:none;border-radius:8px;
+  padding:7px 9px;margin-bottom:1px;
+  color:var(--text-2);font-size:12.5px;cursor:pointer;text-align:left;
+  transition:background .2s var(--ease),color .2s var(--ease);
+}
+.toc-item:hover{background:rgba(16,20,26,.045);color:var(--text)}
+.toc-item.on{background:var(--accent-dim);color:var(--accent)}
+.toc-item .tw{
+  width:16px;height:16px;flex:none;border-radius:5px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:9px;color:var(--text-3);
+  border:1px solid var(--line);
+}
+.toc-item.done .tw{background:var(--accent-dim);border-color:var(--accent-line);color:var(--accent)}
+.toc-item.on .tw{border-color:var(--accent-line);color:var(--accent)}
+.toc-item .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.toc-item .mini{font-size:10px;color:var(--text-3);font-variant-numeric:tabular-nums}
+.toc-item.done .mini{color:rgba(13,110,103,.62)}
+.toc-caret{
+  width:14px;flex:none;color:var(--text-3);font-size:9px;
+  transition:transform .25s var(--ease);
+}
+.toc-caret.open{transform:rotate(90deg)}
+.toc-steps{
+  margin:0 0 4px 12px;padding-left:9px;
+  border-left:1px solid var(--line);
+  overflow:hidden;
+}
+.toc-step{
+  display:flex;align-items:center;gap:7px;width:100%;
+  background:none;border:none;border-radius:6px;
+  padding:5px 8px;margin-bottom:1px;
+  color:var(--text-3);font-size:11.5px;cursor:pointer;text-align:left;
+  transition:all .2s var(--ease);
+}
+.toc-step:hover{background:rgba(16,20,26,.05);color:var(--text)}
+.toc-step.on{background:var(--accent-dim);color:var(--accent)}
+.toc-step.done{color:var(--text-2)}
+.toc-step .k{
+  font-size:8.5px;width:15px;height:15px;flex:none;border-radius:4px;
+  display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--line);color:var(--text-3);letter-spacing:0;
+}
+.toc-step.on .k{border-color:var(--accent-line);color:var(--accent)}
+.toc-step.done .k{color:var(--accent);border-color:rgba(13,110,103,.30)}
+.toc-step .tx{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ============ 中：主体学习区 ============ */
+#stage{
+  position:relative;display:flex;flex-direction:column;
+  min-width:0;overflow:hidden;background:
+    radial-gradient(900px 520px at 50% 42%,rgba(13,110,103,.05),transparent 68%),
+    var(--bg);
+}
+#stage-head{
+  display:flex;align-items:center;gap:14px;
+  padding:14px 22px;border-bottom:1px solid var(--line);
+  flex:none;
+}
+.crumb{display:flex;align-items:center;gap:8px;min-width:0;font-size:12px;color:var(--text-3)}
+.crumb b{color:var(--text-2);font-weight:500}
+.crumb .sep{opacity:.45}
+.crumb .cur{color:var(--accent)}
+.stage-tools{margin-left:auto;display:flex;align-items:center;gap:6px}
+.tool{
+  background:none;border:1px solid transparent;color:var(--text-3);
+  padding:6px 9px;border-radius:8px;cursor:pointer;font-size:11.5px;
+  display:flex;align-items:center;gap:6px;
+  transition:all .25s var(--ease);
+}
+.tool:hover{color:var(--accent);background:var(--accent-dim);border-color:var(--accent-line)}
+.tool svg{width:15px;height:15px}
+.tool.off{opacity:.5}
+
+#flow{
+  flex:1;min-height:0;overflow-y:auto;
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:flex-start;
+  padding:clamp(20px,4vh,48px) 34px 24px;
+  transition:opacity .26s var(--ease),transform .26s var(--ease),filter .26s var(--ease);
+}
+#flow.leaving{opacity:0;transform:translateY(-10px) scale(.99);filter:blur(5px)}
+/* 内容不足一屏时居中偏上；超出时保持顶对齐不裁切 */
+.stage-inner{width:100%;max-width:660px;margin:auto 0;display:flex;flex-direction:column;align-items:center;text-align:center}
+/* 白底无氛围光填充，内容偏上可减轻空旷感 */
+#flow{padding-top:clamp(16px,2.5vh,30px)}
+
+#prompt{
+  font-size:clamp(16px,1.5vw,19px);font-weight:300;
+  letter-spacing:.02em;line-height:2.05;max-width:640px;color:var(--text);
+}
+#prompt .ch{display:inline-block;opacity:0;animation:chIn .5s var(--ease) forwards}
+@keyframes chIn{from{opacity:0;transform:translateY(9px);filter:blur(3px)}to{opacity:1;transform:none;filter:blur(0)}}
+#prompt a{color:var(--accent);text-decoration:none;border-bottom:1px solid var(--accent-line)}
+#prompt code{
+  font-family:var(--mono);font-size:.86em;
+  background:rgba(13,110,103,.07);border:1px solid rgba(13,110,103,.22);
+  padding:1px 6px;border-radius:5px;color:var(--accent);
+}
+
+#quiz-char{
+  font-size:clamp(48px,7vw,76px);font-weight:200;letter-spacing:.04em;
+  margin-top:22px;animation:charIn .65s var(--ease) both;
+}
+@keyframes charIn{from{opacity:0;transform:scale(.92) translateY(8px);filter:blur(7px)}to{opacity:1;transform:none;filter:blur(0)}}
+#quiz-pinyin{
+  font-size:clamp(14px,1.6vw,18px);color:var(--text-2);
+  margin-top:8px;letter-spacing:.12em;font-weight:300;
+  animation:chIn .55s .1s var(--ease) both;
+}
+.say-btn{
+  margin-top:12px;display:inline-flex;align-items:center;gap:6px;
+  background:none;border:1px solid var(--line);color:var(--text-2);
+  border-radius:99px;padding:6px 14px;font-size:12px;cursor:pointer;
+  transition:all .25s var(--ease);
+}
+.say-btn:hover{color:var(--accent);border-color:var(--accent-line);background:var(--accent-dim)}
+.say-btn svg{width:14px;height:14px;flex:none}
+
+#echo{
+  font-family:var(--ipa);
+  font-size:clamp(28px,3.8vw,38px);
+  color:var(--accent);
+  min-height:1.35em;margin-top:28px;
+  letter-spacing:.05em;word-break:break-all;max-width:100%;
+  text-shadow:none;
+  transition:color .25s var(--ease);
+}
+#echo.pop{animation:pop .2s var(--ease)}
+@keyframes pop{from{transform:scale(1.03)}to{transform:scale(1)}}
+#echo::after{content:"";display:inline-block;width:1.5px;height:.92em;background:var(--accent);margin-left:4px;vertical-align:-.08em;animation:blink 1.15s var(--ease) infinite;border-radius:1px}
+#echo:empty::after{opacity:.28}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+#echo.ok{color:var(--accent);text-shadow:none}
+#echo.bad{color:var(--bad);text-shadow:none}
+.shake{animation:shake .38s var(--ease)}
+@keyframes shake{0%,100%{transform:translateX(0)}22%{transform:translateX(-9px)}48%{transform:translateX(7px)}72%{transform:translateX(-4px)}90%{transform:translateX(3px)}}
+
+/* ===== 反馈卡：定位到具体音位 ===== */
+#feedback{
+  width:100%;max-width:560px;margin-top:20px;
+  background:var(--surface-2);border:1px solid var(--line);
+  border-radius:13px;padding:14px 16px;text-align:left;
+  box-shadow:var(--shadow);
+  display:none;
+}
+#feedback.show{display:block;animation:fbIn .32s var(--ease) both}
+@keyframes fbIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+#feedback.bad{border-color:rgba(184,53,40,.30);background:linear-gradient(180deg,rgba(184,53,40,.045),var(--surface-2))}
+#feedback.ok{border-color:rgba(13,110,103,.28);background:linear-gradient(180deg,rgba(13,110,103,.045),var(--surface-2))}
+#feedback.warn{border-color:rgba(150,82,0,.28);background:linear-gradient(180deg,rgba(150,82,0,.045),var(--surface-2))}
+.fb-head{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.fb-badge{
+  font-size:10px;letter-spacing:.14em;padding:2px 8px;border-radius:99px;
+  background:rgba(184,53,40,.11);color:var(--bad);
+}
+#feedback.ok .fb-badge{background:var(--accent-dim);color:var(--accent)}
+#feedback.warn .fb-badge{background:rgba(150,82,0,.11);color:var(--warn)}
+.fb-title{font-size:13.5px;font-weight:500;color:var(--text);letter-spacing:.01em}
+.fb-line{font-size:12.5px;line-height:1.85;color:var(--text-2);margin-bottom:4px}
+.fb-line b{color:var(--text);font-weight:500}
+.fb-why{font-size:12.5px;line-height:1.8;color:var(--text-2)}
+.fb-why .hl{color:var(--warn)}
+.fb-diff{
+  font-family:var(--ipa);font-size:19px;letter-spacing:.06em;
+  margin:9px 0 4px;display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+}
+.fb-diff .slot{padding:3px 9px;border-radius:7px;background:rgba(16,20,26,.04);border:1px solid var(--line)}
+.fb-diff .slot.gone{background:rgba(184,53,40,.10);border-color:rgba(184,53,40,.30);color:#a52e22}
+.fb-diff .slot.bad{background:rgba(150,82,0,.10);border-color:rgba(150,82,0,.28);color:var(--warn)}
+.fb-diff .slot.good{background:var(--accent-dim);border-color:var(--accent-line);color:var(--accent)}
+.fb-diff .arrow{color:var(--text-3);font-size:13px;font-family:var(--font)}
+.fb-keys{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px;align-items:center}
+.kbd{
+  font-family:var(--mono);font-size:11px;color:var(--key);
+  background:rgba(59,91,219,.07);border:1px solid rgba(59,91,219,.26);
+  border-radius:5px;padding:2px 7px;line-height:1.5;
+}
+.fb-keys .lab{font-size:10.5px;color:var(--text-3);letter-spacing:.1em;margin-right:3px}
+.fb-fix{
+  margin-top:9px;padding-top:9px;border-top:1px dashed var(--line-strong);
+  font-size:12.5px;color:var(--text-2);line-height:1.8;
+}
+.fb-fix b{color:var(--accent);font-weight:500}
+.fb-fix .mono{font-family:var(--ipa);font-size:15px;color:var(--accent)}
+
+#hint{
+  margin-top:14px;font-size:13px;color:var(--text-3);
+  font-family:var(--ipa);min-height:1.5em;line-height:1.8;letter-spacing:.03em;
+}
+#hint .ans{color:var(--text-2);font-size:15px}
+#verify-warn{
+  margin-top:16px;font-size:13px;color:var(--warn);display:none;
+  line-height:1.9;text-align:left;max-width:520px;
+}
+#verify-warn b{color:var(--text)}
+#action-btn{
+  margin-top:22px;cursor:pointer;
+  background:var(--accent);border:1px solid var(--accent);color:#fff;
+  border-radius:99px;padding:11px 32px;font-size:14px;font-weight:500;letter-spacing:.05em;
+  box-shadow:0 2px 8px rgba(13,110,103,.20);
+  transition:all .3s var(--ease);
+}
+#action-btn:hover{background:#0a5a54;border-color:#0a5a54;color:#fff;box-shadow:0 6px 20px rgba(13,110,103,.28)}
+#action-btn:active{transform:scale(.97)}
+
+/* ===== 底部导航条 ===== */
+#navbar{
+  flex:none;border-top:1px solid var(--line);
+  background:linear-gradient(180deg,rgba(255,255,255,.82),var(--surface));
+  padding:10px 22px;
+  display:flex;align-items:center;gap:12px;
+}
+.nav-btn{
+  background:var(--surface-2);border:1px solid var(--line);color:var(--text-2);
+  border-radius:8px;padding:7px 14px;font-size:12.5px;cursor:pointer;
+  display:flex;align-items:center;gap:6px;letter-spacing:.03em;
+  transition:all .25s var(--ease);
+}
+.nav-btn:hover:not(:disabled){border-color:var(--accent-line);color:var(--accent);background:var(--accent-dim)}
+.nav-btn:disabled{opacity:.3;cursor:not-allowed}
+.nav-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:500;
+  box-shadow:0 2px 8px rgba(13,110,103,.18)}
+.nav-btn.primary:hover:not(:disabled){background:#0a5a54;border-color:#0a5a54;color:#fff}
+.dots{display:flex;gap:3px;flex:1;justify-content:center;flex-wrap:wrap;min-width:0}
+.dot{
+  width:14px;height:4px;border-radius:99px;background:rgba(16,20,26,.14);
+  cursor:pointer;border:none;padding:0;transition:all .25s var(--ease);
+  position:relative;
+}
+.dot:hover{background:rgba(16,20,26,.30);transform:scaleY(1.6)}
+.dot.done{background:rgba(13,110,103,.48)}
+.dot.on{background:var(--accent);width:22px}
+.kbdhint{
+  font-size:10.5px;color:var(--text-3);letter-spacing:.08em;
+  display:flex;gap:9px;flex:none;align-items:center;
+}
+.kbdhint span{white-space:nowrap}
+.kbdhint i{font-style:normal;color:var(--text-2);font-family:var(--mono)}
+
+/* ============ 右：规则 / 资料 ============ */
+#right{
+  background:var(--surface);border-left:1px solid var(--line);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+#right-head{flex:none;border-bottom:1px solid var(--line);padding:12px 12px 0}
+.rt-tabs{display:flex;gap:2px}
+.rt-tab{
+  background:none;border:none;border-bottom:2px solid transparent;
+  color:var(--text-3);font-size:12px;padding:8px 11px;cursor:pointer;
+  letter-spacing:.04em;transition:all .25s var(--ease);
+  position:relative;display:flex;align-items:center;gap:5px;
+}
+.rt-tab:hover{color:var(--text-2)}
+.rt-tab.on{color:var(--accent);border-bottom-color:var(--accent)}
+.rt-tab .cnt{
+  font-size:9px;background:var(--bad);color:#fff;border-radius:99px;
+  min-width:15px;height:15px;padding:0 4px;display:flex;align-items:center;justify-content:center;
+  font-variant-numeric:tabular-nums;
+}
+.rt-tab .cnt.hide{display:none}
+#right-body{flex:1;overflow-y:auto;padding:14px 16px 28px}
+.rt-pane{display:none}
+.rt-pane.on{display:block}
+.rt-h{
+  font-size:10.5px;color:var(--accent);letter-spacing:.16em;
+  margin:18px 0 8px;font-weight:500;
+}
+.rt-h:first-child{margin-top:0}
+.rt-p{font-size:12px;color:var(--text-2);line-height:1.9;margin-bottom:10px}
+.rt-note{
+  font-size:11px;color:var(--text-3);line-height:1.85;
+  border:1px solid var(--line);border-radius:9px;padding:10px 12px;margin-top:10px;
+}
+.rt-note b{color:var(--text-2)}
+.rt-table{width:100%;border-collapse:collapse;font-size:12px}
+.rt-table td,.rt-table th{
+  border-bottom:1px solid var(--line);padding:6px 7px;text-align:left;vertical-align:middle;
+}
+.rt-table th{color:var(--text-3);font-weight:400;font-size:9.5px;letter-spacing:.13em}
+.rt-table td.ipa{font-family:var(--ipa);color:var(--accent);font-size:15px;font-weight:500;white-space:nowrap}
+.rt-table td.keys{font-family:var(--mono);color:var(--text-2);font-size:10.5px;white-space:nowrap}
+.rt-table tr:hover td{background:rgba(16,20,26,.030)}
+.rt-table tr.hl td{background:rgba(13,110,103,.07)}
+.mini-say{
+  background:none;border:none;color:var(--text-3);cursor:pointer;
+  padding:1px 3px;margin-left:5px;border-radius:4px;transition:color .2s var(--ease);
+}
+.mini-say:hover{color:var(--accent)}
+.mini-say svg{width:12px;height:12px;display:block}
+
+.wrong-stat-row{display:grid;grid-template-columns:1fr 62px;gap:8px;align-items:center;margin-bottom:7px;font-size:11.5px}
+.ws-name{color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ws-bar-wrap{grid-column:1/-1;height:3px;background:rgba(16,20,26,.10);border-radius:99px;overflow:hidden}
+.ws-bar{height:100%;background:linear-gradient(90deg,var(--bad),rgba(184,53,40,.40));border-radius:99px;transition:width .8s var(--ease)}
+.ws-num{color:var(--text-3);font-size:10px;text-align:right;font-variant-numeric:tabular-nums}
+.wrong-row{
+  display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:8px;
+  border:1px solid transparent;transition:all .2s var(--ease);
+}
+.wrong-row:hover{background:rgba(16,20,26,.035);border-color:var(--line)}
+.wrong-row .ch{font-size:18px;font-weight:300;min-width:22px;text-align:center}
+.wrong-row .py{font-size:10.5px;color:var(--text-3);letter-spacing:.04em}
+.wrong-row .ipa{font-family:var(--ipa);font-size:14px;color:var(--accent);margin-left:auto}
+.wrong-row .wt{font-size:9.5px;color:var(--bad);background:rgba(184,53,40,.10);padding:1px 5px;border-radius:4px}
+.wrong-row .last{font-family:var(--ipa);font-size:12px;color:var(--warn);max-width:78px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rt-empty{text-align:center;padding:36px 14px;color:var(--text-3);font-size:12px;line-height:2}
+.rt-btn{
+  background:var(--surface-2);border:1px solid var(--line);color:var(--text-2);
+  border-radius:8px;padding:8px 14px;font-size:12px;cursor:pointer;
+  transition:all .25s var(--ease);width:100%;
+}
+.rt-btn:hover{border-color:var(--accent-line);color:var(--accent)}
+.rt-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:500}
+.rt-btn.primary:hover{background:#0a5a54;border-color:#0a5a54;color:#fff}
+
+/* 幽灵输入框 */
+#ghost{
+  position:fixed;left:50%;bottom:0;width:1px;height:1px;padding:0;margin:0;
+  opacity:.01;border:none;outline:none;background:transparent;color:transparent;
+  z-index:1;pointer-events:none;
+}
+#toast{
+  position:fixed;left:50%;bottom:78px;transform:translateX(-50%) translateY(8px);
+  z-index:100;background:var(--surface-3);border:1px solid var(--line-strong);
+  color:var(--text-2);font-size:12px;padding:9px 16px;
+  border-radius:99px;opacity:0;visibility:hidden;transition:all .3s var(--ease);
+  pointer-events:none;max-width:70vw;text-align:center;
+}
+#toast.show{opacity:1;visibility:visible;transform:translateX(-50%) translateY(0)}
+
+.fade{animation:fade .4s var(--ease) both}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.pulse-ok{animation:pulseOk .5s var(--ease)}
+@keyframes pulseOk{0%{box-shadow:0 0 0 0 rgba(13,110,103,.30)}100%{box-shadow:0 0 0 16px rgba(13,110,103,0)}}
+
+@media (max-width:1240px){
+  :root{--left-w:232px;--right-w:300px}
+  #kbdhint{display:none}
+}
+@media (max-width:1040px){
+  #app{grid-template-columns:var(--left-w) minmax(0,1fr) 0}
+  #right{position:fixed;right:0;top:0;bottom:0;width:320px;z-index:60;box-shadow:-20px 0 60px rgba(16,20,26,.16);transform:translateX(100%);transition:transform .3s var(--ease)}
+  #right.open{transform:none}
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- ================= 左：目录 / 进度 ================= -->
+  <aside id="left">
+    <div id="left-head">
+      <div class="brand">
+        <span class="brand-dot"></span>
+        <span class="brand-name">IPA 打字课</span>
+        <span class="brand-ver">WORKBENCH</span>
+      </div>
+      <div class="prog-row">
+        <span class="prog-label" id="prog-label">课程进度</span>
+        <span class="prog-num" id="prog-num">0 / 10</span>
+      </div>
+      <div class="prog-track"><div class="prog-fill" id="prog-fill"></div></div>
+    </div>
+    <nav id="toc"></nav>
+  </aside>
+
+  <!-- ================= 中：主体 ================= -->
+  <main id="stage">
+    <div id="stage-head">
+      <div class="crumb" id="crumb"></div>
+      <div class="stage-tools">
+        <button class="tool" id="sound-btn" title="发音开关" aria-label="发音开关">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 9.5v5h3.5L12 19V5L7.5 9.5H4z"/>
+            <path id="sound-waves" d="M15.5 9a4 4 0 010 6M18 6.5a7.5 7.5 0 011 11"/>
+            <path id="sound-slash" d="M4 4l16 16"/>
+          </svg>
+        </button>
+        <button class="tool" id="right-toggle" title="规则 / 资料面板">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div id="flow">
+      <div class="stage-inner">
+        <div id="prompt"></div>
+        <div id="quiz-char"></div>
+        <div id="quiz-pinyin"></div>
+        <button id="say-btn" class="say-btn" style="display:none" aria-label="发音">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 9.5v5h3.5L12 19V5L7.5 9.5H4z"/>
+            <path d="M15.5 9a4 4 0 010 6M18 6.5a7.5 7.5 0 011 11"/>
+          </svg>
+          <span id="say-label">发音</span>
+        </button>
+        <div id="echo"></div>
+        <div id="feedback"></div>
+        <div id="hint"></div>
+        <div id="verify-warn"></div>
+        <button id="action-btn" style="display:none"></button>
+      </div>
+    </div>
+
+    <div id="navbar">
+      <button class="nav-btn" id="prev-btn" title="上一题（←）">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        上一题
+      </button>
+      <div class="dots" id="dots"></div>
+      <span class="kbdhint">
+        <span><i>←</i> 退</span><span><i>→</i> 进</span><span><i>↵</i> 提交</span>
+      </span>
+      <button class="nav-btn primary" id="next-btn" title="下一题（→）">
+        下一题
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+    </div>
+  </main>
+
+  <!-- ================= 右：规则 / 资料 ================= -->
+  <aside id="right">
+    <div id="right-head">
+      <div class="rt-tabs">
+        <button class="rt-tab on" data-pane="points">要点</button>
+        <button class="rt-tab" data-pane="ref">速查</button>
+        <button class="rt-tab" data-pane="rules">规则</button>
+        <button class="rt-tab" data-pane="wrong">错题<span class="cnt hide" id="wrong-cnt">0</span></button>
+      </div>
+    </div>
+    <div id="right-body">
+      <div class="rt-pane on" id="pane-points"></div>
+      <div class="rt-pane" id="pane-ref"></div>
+      <div class="rt-pane" id="pane-rules"></div>
+      <div class="rt-pane" id="pane-wrong"></div>
+    </div>
+  </aside>
+</div>
+
+<input id="ghost" autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="text">
+<div id="toast"></div>
+
+<script>
+const STAGES = [
+
+// ---------------- 0 安装 ----------------
+{ id:"install", nav:"安装", steps:[
+  { k:"say", t:"欢迎来到 IPA 打字课。\n在这里，你将从零开始学会用 Keyman 输入法，把汉语拼音转写成国际音标（IPA）。" },
+  { k:"say", t:"先弄清三件事的关系：\n汉语拼音，是你熟悉的注音符号；\n国际音标，是它真实读音的记法；\n而 Keyman，是把这些音标敲进电脑的输入法。\n\n本教程的任务很简单：看到拼音，打出音标。" },
+  { k:"say", autoGuide:"ref", t:"对了，右上角这个问号图标是「汉语拼音 → 国际音标对照键位速查表」。\n之后学习过程中如果忘记某个音标对应哪个键，随时点开，退出按 Esc。" },
+  { k:"say", t:"开始前，先花两分钟装好输入法。\n第一步：打开下面这个网站，下载并安装 Keyman 主程序，一路下一步即可。\n⚠️ 如果弹出「没有任何东西可以安装」说明你电脑已装过 Keyman，直接关掉就行——主程序不需要重复装。", link:"https://keyman.com/windows/",
+    mac:{ t:"第一步：打开下面这个网站，下载 Mac 版 Keyman 主程序。下载后打开 .dmg，把 Keyman 拖进「应用程序」。\n⚠️ 首次打开如被系统拦截，到「系统设置 → 隐私与安全性」点「仍要打开」。", link:"https://keyman.com/mac/" } },
+  { k:"say", t:"第二步：这是最关键的一步——打开下面这个页面，点「Install keyboard」下载 IPA (SIL) 键盘包（.kmp 文件），下载后**双击那个 .kmp 文件**导入到 Keyman。", link:"https://keyman.com/keyboards/sil_ipa",
+    mac:{ t:"第二步：打开下面的页面，点「Install keyboard」下载 IPA (SIL) 键盘包（.kmp）。\n下载后双击 .kmp 导入；如果双击没反应，打开 Keyman Configuration，把 .kmp 拖进去。\n⚠️ Keyman 需要 17 或更高版本。", link:"https://keyman.com/keyboards/sil_ipa" } },
+  { k:"say", t:"Mac 键位小抄（IPA 键盘使用英文键位）：\n>  = Shift + .　　<  = Shift + ,\n=  直接按　　|  = Shift + \\　　^  = Shift + 6\n若打出全角符号（＞ ＜ ＝ ｜ ＾），说明还在中文输入法，切到 IPA (SIL) 再打。" },
+  { k:"say", t:"小提示：如果按 a 再按 = 却出现 =a，说明键盘被切到了 Before 模式。\nWindows：按 RAlt + - 切回 After。",
+    mac:{ t:"小提示：如果按 a 再按 = 却出现 =a，说明键盘被切到了 Before 模式。\nMac：按 Option + - 切回 After。" } },
+  { k:"say", t:"第三步：按 Win + 空格，在输入法列表里切换到「IPA (SIL)」。\n装好后就点下面的按钮。", btn:"我已装好，开始验证",
+    mac:{ t:"第三步：点屏幕右上角菜单栏的输入法图标，选择「IPA (SIL)」。\n若列表里没有，打开 Keyman Configuration → Keyboard Layouts 确认已启用；再到「系统设置 → 键盘 → 输入法」添加 Keyman。\n忘记键位时，菜单栏 Input → Keyman → On-Screen Keyboard 会显示虚拟键盘。\n装好后就点下面的按钮。", btn:"我已装好，开始验证" } },
+  { k:"verify", t:"验证一下：请依次按 a 和 = 。\n如果输入法装好了，屏幕上应该浮现 ɑ 。", a:"ɑ" },
+]},
+
+// ---------------- 1 单韵母 ----------------
+{ id:"vowel", nav:"单韵母", steps:[
+  { k:"say", t:"输入法没问题。接下来让我们从最基础的六个单韵母开始。" },
+  { k:"say", t:"拼音 a 单用时，音标记作大写的 [A]。\n打法：按住 Shift 再按 A 。" },
+  { k:"type", t:"照着打出这个音标：A", a:"A", keys:"Shift+A" },
+  { k:"type", t:"现在自己来：打出拼音 a 对应的音标", a:"A", keys:"Shift+A" },
+  { k:"say", t:"o、u、i 三个最省心——音标和拼音长得一样，直接按对应的字母就行。" },
+  { k:"type", t:"照着打出这个音标：o", a:"o", keys:"o" },
+  { k:"type", t:"照着打出这个音标：u", a:"u", keys:"u" },
+  { k:"type", t:"打出拼音 i 对应的音标", a:"i", keys:"i" },
+  { k:"say", t:"e 要特别小心：单用时它不写成 e，而是记作 [ɤ]。\n打法：先按大写 O，再按 > 。" },
+  { k:"type", t:"照着打出这个音标：ɤ", a:"ɤ", keys:"O >" },
+  { k:"type", t:"打出拼音 e 对应的音标", a:"ɤ", keys:"O >" },
+  { k:"say", t:"最后一个：ü 记作 [y]，直接按 y 。" },
+  { k:"type", t:"照着打出这个音标：y", a:"y", keys:"y" },
+  { k:"type", t:"打出拼音 ü 对应的音标", a:"y", keys:"y" },
+  { k:"say", t:"先埋个伏笔：ɤ 并不是 e 唯一的写法，「儿」er 也算 e 家族的成员——谜底后面揭晓。" },
+  { k:"quiz", c:"啊", p:"a", a:"A", keys:"Shift+A" },
+  { k:"quiz", c:"哦", p:"o", a:"o", keys:"o" },
+  { k:"quiz", c:"鹅", p:"e", a:"ɤ", keys:"O >" },
+  { k:"quiz", c:"衣", p:"i", a:"i", keys:"i" },
+  { k:"quiz", c:"乌", p:"u", a:"u", keys:"u" },
+  { k:"quiz", c:"鱼", p:"ü", a:"y", keys:"y" },
+]},
+
+// ---------------- 2 简单声母 ----------------
+{ id:"cons1", nav:"声母·一", steps:[
+  { k:"say", t:"现在你已经学会了六个单韵母。接下来，给它们配上第一批声母。" },
+  { k:"say", t:"l、m、n 最省心，和拼音写法一样，直接按。" },
+  { k:"type", t:"打出拼音 l 对应的音标", a:"l", keys:"l" },
+  { k:"type", t:"打出拼音 m 对应的音标", a:"m", keys:"m" },
+  { k:"type", t:"打出拼音 n 对应的音标", a:"n", keys:"n" },
+  { k:"say", t:"f 也好打：学界主流记作不送气 [f]，直接按 f 即可。\n（也有教材记作送气 fʰ——两种写法本教程都算对。）" },
+  { k:"type", t:"打出拼音 f 对应的音标", a:"f", keys:"f", acc:["fʰ"] },
+  { k:"say", t:"接下来是第一条重要规律。\n拼音 d 其实是不送气清音，音标记作 [t]；\n拼音 t 才是送气的，记作 [tʰ]。" },
+  { k:"say", t:"右上角小小的 ʰ 叫「送气符号」，表示紧跟一股气流。\n打法：先按 h，再按 ^ 。" },
+  { k:"type", t:"照着打出这个送气符号：ʰ", a:"ʰ", keys:"h ^" },
+  { k:"type", t:"打出拼音 d 对应的音标", a:"t", keys:"t" },
+  { k:"type", t:"打出拼音 t 对应的音标（别忘了送气）", a:"tʰ", keys:"t h^", err:"少了送气符号 ʰ（先 h 再 ^）" },
+  { k:"say", t:"易错提醒：拼音 b、d、g 都是不送气清音，要写成 p、t、k；\n拼音 p、t、k 才是送气的，后面要加 ʰ 。" },
+  { k:"quiz", c:"大", p:"da", a:"tA", keys:"t Shift+A" },
+  { k:"quiz", c:"了", p:"le", a:"lɤ", keys:"l O>" },
+  { k:"quiz", c:"妈", p:"ma", a:"mA", keys:"m Shift+A" },
+  { k:"quiz", c:"发", p:"fa", a:"fA", keys:"f Shift+A", acc:["fʰA"] },
+  { k:"quiz", c:"踢", p:"ti", a:"tʰi", keys:"t h^ i", err:"t 是送气音，少了 ʰ" },
+  { k:"quiz", c:"里", p:"li", a:"li", keys:"l i" },
+  { k:"quiz", c:"木", p:"mu", a:"mu", keys:"m u" },
+  { k:"quiz", c:"女", p:"nü", a:"ny", keys:"n y" },
+]},
+
+// ---------------- 3 声调 ----------------
+{ id:"tone", nav:"声调", steps:[
+  { k:"say", t:"前面我们学习了声母 l m n f d t 和六个单韵母。\n但音节还不完整——汉语是有声调的。" },
+  { k:"say", t:"用「五度标记法」记声调：\n阴平 55，阳平 35，上声 214，去声 51；轻声不标。\n调值直接写在音标后面。" },
+  { k:"say", t:"上标数字的打法：先按数字，再按 ^ 。\n比如 5 ^ 会变成 ⁵ 。" },
+  { k:"type", t:"照着打出上标：⁵", a:"⁵", keys:"5 ^" },
+  { k:"say", t:"从现在开始，所有练习都要带上声调。来试一试完整的。" },
+  { k:"type", t:"打出「妈 mā」的音标（阴平 55）", a:"mA⁵⁵", keys:"m Shift+A 5^ 5^" },
+  { k:"type", t:"打出「麻 má」的音标（阳平 35）", a:"mA³⁵", keys:"m Shift+A 3^ 5^" },
+  { k:"type", t:"打出「马 mǎ」的音标（上声 214）", a:"mA²¹⁴", keys:"m Shift+A 2^ 1^ 4^" },
+  { k:"type", t:"打出「骂 mà」的音标（去声 51）", a:"mA⁵¹", keys:"m Shift+A 5^ 1^" },
+  { k:"say", t:"拓展一句：上声在词里常读「半上」21。本教程单字记 214，词内按 21 记。" },
+  { k:"quiz", c:"大", p:"dà", a:"tA⁵¹", keys:"t A 5^ 1^" },
+  { k:"quiz", c:"梨", p:"lí", a:"li³⁵", keys:"l i 3^ 5^" },
+  { k:"quiz", c:"里", p:"lǐ", a:"li²¹⁴", keys:"l i 2^ 1^ 4^" },
+  { k:"quiz", c:"力", p:"lì", a:"li⁵¹", keys:"l i 5^ 1^" },
+  { k:"quiz", c:"发", p:"fā", a:"fA⁵⁵", keys:"f A 5^ 5^", acc:["fʰA⁵⁵"] },
+  { k:"quiz", c:"罚", p:"fá", a:"fA³⁵", keys:"f A 3^ 5^", acc:["fʰA³⁵"] },
+]},
+
+// ---------------- 4 a 的音位变体 ----------------
+{ id:"var-a", nav:"a 变体", steps:[
+  { k:"say", t:"前面我们学习了声调。现在回到开头埋下的问题：\ne 在所有情形都打成 ɤ 吗？——不是。a 也一样。" },
+  { k:"say", t:"同一个拼音字母，在不同环境里读音不同，记音时要写成不同音标。\n这叫「音位变体」。我们一个一个来看 a 的四种写法。" },
+  { k:"say", t:"a 的第一变：在 ai、an 里读前元音 [a]，直接按 a 。" },
+  { k:"type", t:"照着打出这个音标：a", a:"a", keys:"a" },
+  { k:"say", t:"特殊：ia 里的 a 不是前元音 [a]，而是央低元音 [A]。\n打法：按大写 A（Shift + A）。" },
+  { k:"type", t:"照着打出这个音标：iA", a:"iA", keys:"i Shift+A" },
+  { k:"type", t:"ai 合起来，打出拼音 ai 对应的音标", a:"ai", keys:"a i" },
+  { k:"type", t:"an 合起来，打出拼音 an 对应的音标", a:"an", keys:"a n" },
+  { k:"say", t:"a 的第二变：单用或在辅音后读 [A]——你已经很熟了。" },
+  { k:"say", t:"a 的第三变：在 ang、ao、ua 里读后元音 [ɑ]。\n打法：先按 a，再按 = 。" },
+  { k:"type", t:"照着打出这个音标：ɑ", a:"ɑ", keys:"a =" },
+  { k:"say", t:"顺便学一个新符号：ng 是舌根鼻音 [ŋ]，打法是 n 再 > 。" },
+  { k:"type", t:"照着打出这个音标：ŋ", a:"ŋ", keys:"n >" },
+  { k:"type", t:"ao 合起来，打出拼音 ao 对应的音标", a:"ɑu", keys:"a= u" },
+  { k:"type", t:"ang 合起来，打出拼音 ang 对应的音标", a:"ɑŋ", keys:"a= n>" },
+  { k:"say", t:"a 的第四变：在 ian、üan 里读 [æ]。\n打法：先按 a，再按 < 。" },
+  { k:"type", t:"照着打出这个音标：æ", a:"æ", keys:"a <" },
+  { k:"type", t:"ian 合起来，打出拼音 ian 对应的音标", a:"iæn", keys:"i a< n" },
+  { k:"say", t:"易错提醒：ao、ang 里的 a 是后元音 ɑ；ian 里的 a 是 æ——都别顺手打成 A。" },
+  { k:"quiz", c:"爱", p:"ài", a:"ai⁵¹", keys:"a i 5^ 1^" },
+  { k:"quiz", c:"来", p:"lái", a:"lai³⁵", keys:"l a i 3^ 5^" },
+  { k:"quiz", c:"马", p:"mǎ", a:"mA²¹⁴", keys:"m A 2^ 1^ 4^" },
+  { k:"quiz", c:"捞", p:"lāo", a:"lɑu⁵⁵", keys:"l a= u 5^ 5^", err:"ao 里的 a 是后元音 ɑ（a=）" },
+  { k:"quiz", c:"俩", p:"liǎ", a:"liA²¹⁴", keys:"l i Shift+A 2^ 1^ 4^", err:"ia 里的 a 是央低 A（Shift+A），不是前 a" },
+  { k:"quiz", c:"天", p:"tiān", a:"tʰiæn⁵⁵", keys:"t h^ i a< n 5^ 5^", err:"ian 里的 a 读 æ（a<）" },
+  { k:"quiz", c:"大", p:"dà", a:"tA⁵¹", keys:"t A 5^ 1^" },
+]},
+
+// ---------------- 5 e 的音位变体 ----------------
+{ id:"var-e", nav:"e 变体", steps:[
+  { k:"say", t:"前面我们学习了 a 的四种写法。\ne 也有四种——这正是开头那个问题的完整答案。" },
+  { k:"say", t:"e 的第一变：辅音后或单用 → [ɤ]，你已经会了。" },
+  { k:"say", t:"e 的第二变：在 ei、ui 里读 [e]，直接按 e 。" },
+  { k:"type", t:"ei 合起来，打出拼音 ei 对应的音标", a:"ei", keys:"e i" },
+  { k:"say", t:"e 的第三变：在 ie、üe 里读 [ɛ]。\n打法：先按 e，再按 < 。" },
+  { k:"type", t:"照着打出这个音标：ɛ", a:"ɛ", keys:"e <" },
+  { k:"type", t:"ie 合起来，打出拼音 ie 对应的音标", a:"iɛ", keys:"i e<" },
+  { k:"say", t:"e 的第四变：在 en、eng、un、ueng 和 er 里读中央元音 [ə]。\n打法：先按 e，再按 = 。" },
+  { k:"type", t:"照着打出这个音标：ə", a:"ə", keys:"e =" },
+  { k:"type", t:"en 合起来，打出拼音 en 对应的音标", a:"ən", keys:"e= n" },
+  { k:"type", t:"eng 合起来，打出拼音 eng 对应的音标", a:"əŋ", keys:"e= n>" },
+  { k:"say", t:"注意到没：er 的 e 也读 ə。那 r 记什么呢？\n先记下这个问题，讲完声母我们就回来。" },
+  { k:"say", t:"易错提醒：e 单用是 ɤ，只有 ei、ie、en 这些组合里才会「变脸」。" },
+  { k:"quiz", c:"飞", p:"fēi", a:"fei⁵⁵", keys:"f e i 5^ 5^", acc:["fʰei⁵⁵"] },
+  { k:"quiz", c:"列", p:"liè", a:"liɛ⁵¹", keys:"l i e< 5^ 1^", err:"ie 里的 e 读 ɛ（e<）" },
+  { k:"quiz", c:"嫩", p:"nèn", a:"nən⁵¹", keys:"n e= n 5^ 1^", err:"en 里的 e 读 ə（e=）" },
+  { k:"quiz", c:"冷", p:"lěng", a:"ləŋ²¹⁴", keys:"l e= n> 2^ 1^ 4^", err:"eng 里的 e 读 ə，ng 是 ŋ（n>）" },
+  { k:"quiz", c:"妹", p:"mèi", a:"mei⁵¹", keys:"m e i 5^ 1^" },
+  { k:"quiz", c:"了", p:"le", a:"lɤ", keys:"l O>" },
+  { k:"quiz", c:"特", p:"tè", a:"tʰɤ⁵¹", keys:"t h^ O> 5^ 1^", err:"e 单用读 ɤ（O>）；t 别忘了送气" },
+]},
+
+// ---------------- 6 剩余声母 + i 变体 ----------------
+{ id:"cons2", nav:"声母·二", steps:[
+  { k:"say", t:"前面我们学习了 a 和 e 的音位变体。\n现在把剩下的声母补齐——它们全是「送气 / 不送气」的对立。" },
+  { k:"say", t:"先看舌根音：g → k（不送气），k → kʰ（送气），h → x 。" },
+  { k:"type", t:"打出拼音 g 对应的音标", a:"k", keys:"k" },
+  { k:"type", t:"打出拼音 k 对应的音标", a:"kʰ", keys:"k h^", err:"少了送气符号 ʰ" },
+  { k:"type", t:"打出拼音 h 对应的音标", a:"x", keys:"x" },
+  { k:"quiz", c:"哥", p:"gē", a:"kɤ⁵⁵", keys:"k O> 5^ 5^" },
+  { k:"quiz", c:"哭", p:"kū", a:"kʰu⁵⁵", keys:"k h^ u 5^ 5^", err:"k 是送气音，少了 ʰ" },
+  { k:"quiz", c:"喝", p:"hē", a:"xɤ⁵⁵", keys:"x O> 5^ 5^" },
+  { k:"say", t:"接下来是平舌音。z、c 叫「塞擦音」——前半是塞音 t，后半是擦音 s：\nz → ts，c → tsʰ，s → s 。" },
+  { k:"type", t:"照着打出这个音标：ts", a:"ts", keys:"t s" },
+  { k:"type", t:"照着打出这个音标：tsʰ", a:"tsʰ", keys:"t s h^" },
+  { k:"say", t:"关键来了：i 站在 z、c、s 后面时不读 i，\n读作「舌尖前元音」[ɿ]。打法：先按 z，再按 | 。\n这就是 i 的第一变。" },
+  { k:"type", t:"照着打出这个音标：ɿ", a:"ɿ", keys:"z |" },
+  { k:"type", t:"zi 合起来，打出拼音 zi 对应的音标", a:"tsɿ", keys:"t s z|" },
+  { k:"quiz", c:"四", p:"sì", a:"sɿ⁵¹", keys:"s z| 5^ 1^", err:"s 后面的 i 读 ɿ（z|）" },
+  { k:"quiz", c:"词", p:"cí", a:"tsʰɿ³⁵", keys:"t s h^ z| 3^ 5^", err:"c 后面的 i 读 ɿ；c 是 tsʰ 要送气" },
+  { k:"say", t:"前面我们学习了平舌 z c s。对应的卷舌音是：\nzh → tʂ（t + s<），ch → tʂʰ，sh → ʂ（s<），r → ʐ（z<）。" },
+  { k:"type", t:"照着打出这个音标：ʂ", a:"ʂ", keys:"s <" },
+  { k:"type", t:"照着打出这个音标：ʐ", a:"ʐ", keys:"z <" },
+  { k:"type", t:"照着打出这个音标：tʂ", a:"tʂ", keys:"t s<" },
+  { k:"say", t:"同理，i 站在 zh、ch、sh、r 后面时读「舌尖后元音」[ʅ]。\n打法：先按大写 Z，再按 | 。这是 i 的第二变。" },
+  { k:"type", t:"照着打出这个音标：ʅ", a:"ʅ", keys:"Z |" },
+  { k:"type", t:"zhi 合起来，打出拼音 zhi 对应的音标", a:"tʂʅ", keys:"t s< Z|" },
+  { k:"quiz", c:"吃", p:"chī", a:"tʂʰʅ⁵⁵", keys:"t s< h^ Z| 5^ 5^", err:"ch 后面的 i 读 ʅ（Z|）；ch 要送气" },
+  { k:"quiz", c:"是", p:"shì", a:"ʂʅ⁵¹", keys:"s< Z| 5^ 1^", err:"sh 后面的 i 读 ʅ（Z|）" },
+  { k:"quiz", c:"日", p:"rì", a:"ʐʅ⁵¹", keys:"z< Z| 5^ 1^", err:"r 后面的 i 读 ʅ（Z|）" },
+  { k:"say", t:"前面我们学习了卷舌音。最后一组是舌面音：\nj → tɕ（t + c<），q → tɕʰ，x → ɕ（c<）。" },
+  { k:"type", t:"照着打出这个音标：ɕ", a:"ɕ", keys:"c <" },
+  { k:"type", t:"ji 合起来，打出拼音 ji 对应的音标", a:"tɕi", keys:"t c< i" },
+  { k:"quiz", c:"鸡", p:"jī", a:"tɕi⁵⁵", keys:"t c< i 5^ 5^" },
+  { k:"quiz", c:"七", p:"qī", a:"tɕʰi⁵⁵", keys:"t c< h^ i 5^ 5^", err:"q 是 tɕʰ，少了送气" },
+  { k:"quiz", c:"西", p:"xī", a:"ɕi⁵⁵", keys:"c< i 5^ 5^" },
+  { k:"say", t:"还剩最熟悉的一对：b → p，p → pʰ。\n还记得第一条规律吗——拼音 b d g 都是不送气清音。" },
+  { k:"type", t:"打出拼音 b 对应的音标", a:"p", keys:"p" },
+  { k:"type", t:"打出拼音 p 对应的音标", a:"pʰ", keys:"p h^", err:"少了送气符号 ʰ" },
+  { k:"quiz", c:"八", p:"bā", a:"pA⁵⁵", keys:"p A 5^ 5^" },
+  { k:"quiz", c:"爬", p:"pá", a:"pʰA³⁵", keys:"p h^ A 3^ 5^", err:"p 是送气音，少了 ʰ" },
+  { k:"quiz", c:"高", p:"gāo", a:"kɑu⁵⁵", keys:"k a= u 5^ 5^", err:"ao 里的 a 是后元音 ɑ（a=）" },
+  { k:"quiz", c:"古", p:"gǔ", a:"ku²¹⁴", keys:"k u 2^ 1^ 4^" },
+  { k:"quiz", c:"湖", p:"hú", a:"xu³⁵", keys:"x u 3^ 5^" },
+  { k:"quiz", c:"德", p:"dé", a:"tɤ³⁵", keys:"t O> 3^ 5^", err:"e 单用读 ɤ（O>）" },
+]},
+
+// ---------------- 7 复韵母 ----------------
+{ id:"finals", nav:"复韵母", steps:[
+  { k:"say", t:"前面我们学习了全部声母和 i 的音位变体。\n有了 a、e 变体打底，复韵母只剩记忆了。" },
+  { k:"say", t:"先看无介音的一组，规则你其实都会：\nai → ai　　ei → ei　　ao → ɑu　　ou → ou\nan → an　　en → ən　　ang → ɑŋ　eng → əŋ　ing → iŋ" },
+  { k:"say", t:"唯一要特别记的：ong 实际读 [uŋ]，不是 oŋ！" },
+  { k:"type", t:"ong 合起来，打出拼音 ong 对应的音标", a:"uŋ", keys:"u n>" },
+  { k:"say", t:"易错提醒：ao、ang 用 ɑ；en、eng 用 ə——变体的规则在这里原样生效。" },
+  { k:"quiz", c:"白", p:"bái", a:"pai³⁵", keys:"p a i 3^ 5^" },
+  { k:"quiz", c:"好", p:"hǎo", a:"xɑu²¹⁴", keys:"x a= u 2^ 1^ 4^", err:"ao 里的 a 是 ɑ（a=）" },
+  { k:"quiz", c:"豆", p:"dòu", a:"tou⁵¹", keys:"t o u 5^ 1^" },
+  { k:"quiz", c:"山", p:"shān", a:"ʂan⁵⁵", keys:"s< a n 5^ 5^" },
+  { k:"quiz", c:"听", p:"tīng", a:"tʰiŋ⁵⁵", keys:"t h^ i n> 5^ 5^" },
+  { k:"quiz", c:"红", p:"hóng", a:"xuŋ³⁵", keys:"x u n> 3^ 5^", err:"ong 实际读 uŋ，不是 oŋ" },
+  { k:"say", t:"接下来是 i 介音组：\nia → iA　　iao → iɑu　ie → iɛ\niou → iou　ian → iæn　iang → iɑŋ" },
+  { k:"say", t:"两个特例：\n一、iong 实际读 [yŋ]，韵腹是 y 不是 i；\n二、iu 是 iou 的缩写，记音要写全成 iou。" },
+  { k:"type", t:"iong 合起来，打出拼音 iong 对应的音标", a:"yŋ", keys:"y n>" },
+  { k:"type", t:"iu 写全，打出拼音 iu 对应的音标", a:"iou", keys:"i o u" },
+  { k:"quiz", c:"家", p:"jiā", a:"tɕiA⁵⁵", keys:"t c< i Shift+A 5^ 5^" },
+  { k:"quiz", c:"小", p:"xiǎo", a:"ɕiɑu²¹⁴", keys:"c< i a= u 2^ 1^ 4^", err:"iao 里的 a 是 ɑ（a=）" },
+  { k:"quiz", c:"节", p:"jié", a:"tɕiɛ³⁵", keys:"t c< i e< 3^ 5^", err:"ie 里的 e 读 ɛ（e<）" },
+  { k:"quiz", c:"六", p:"liù", a:"liou⁵¹", keys:"l i o u 5^ 1^", err:"iu 是 iou 的缩写，要写全" },
+  { k:"quiz", c:"熊", p:"xióng", a:"ɕyŋ³⁵", keys:"c< y n> 3^ 5^", err:"iong 实际读 yŋ" },
+  { k:"say", t:"再往下是 u 介音组：\nua → uɑ　uo → uo　uai → uai\nuan → uan　uang → uɑŋ　ueng → uəŋ" },
+  { k:"say", t:"两个缩写要记牢：ui = uei，un = uen——记音时都要写全。" },
+  { k:"type", t:"ui 写全，打出拼音 ui 对应的音标", a:"uei", keys:"u e i" },
+  { k:"type", t:"un 写全，打出拼音 un 对应的音标", a:"uən", keys:"u e= n" },
+  { k:"quiz", c:"花", p:"huā", a:"xuɑ⁵⁵", keys:"x u a= 5^ 5^", err:"ua 里的 a 是 ɑ（a=）" },
+  { k:"quiz", c:"多", p:"duō", a:"tuo⁵⁵", keys:"t u o 5^ 5^" },
+  { k:"quiz", c:"怪", p:"guài", a:"kuai⁵¹", keys:"k u a i 5^ 1^" },
+  { k:"quiz", c:"水", p:"shuǐ", a:"ʂuei²¹⁴", keys:"s< u e i 2^ 1^ 4^", err:"ui 是 uei 的缩写，要写全" },
+  { k:"quiz", c:"村", p:"cūn", a:"tsʰuən⁵⁵", keys:"t s h^ u e= n 5^ 5^", err:"un 是 uen 的缩写，e 读 ə（e=）" },
+  { k:"quiz", c:"光", p:"guāng", a:"kuɑŋ⁵⁵", keys:"k u a= n> 5^ 5^" },
+  { k:"say", t:"最后是 ü 介音组，只有三个：\nüe → yɛ　　üan → yæn　　ün → yn" },
+  { k:"quiz", c:"略", p:"lüè", a:"lyɛ⁵¹", keys:"l y e< 5^ 1^", err:"üe 里的 e 读 ɛ（e<）" },
+  { k:"quiz", c:"全", p:"quán", a:"tɕʰyæn³⁵", keys:"t c< h^ y a< n 3^ 5^", err:"üan 里的 a 读 æ（a<）" },
+  { k:"quiz", c:"军", p:"jūn", a:"tɕyn⁵⁵", keys:"t c< y n 5^ 5^" },
+  { k:"quiz", c:"嫩", p:"nèn", a:"nən⁵¹", keys:"n e= n 5^ 1^" },
+]},
+
+// ---------------- 8 儿化 ----------------
+{ id:"er", nav:"儿化", steps:[
+  { k:"say", t:"还记得 e 家族留下的问题吗？\ner 的 e 读 [ə]——那 r 到底记什么？" },
+  { k:"say", t:"现在揭晓：er → [əɺ]。\nɺ 是「儿化卷舌标记」，打法：先按大写 L，再按 > 。" },
+  { k:"type", t:"照着打出这个音标：ɺ", a:"ɺ", keys:"L >" },
+  { k:"type", t:"er 合起来，打出拼音 er 对应的音标", a:"əɺ", keys:"e= L>" },
+  { k:"say", t:"儿化词更简单：直接在前面音节的韵母后面加 ɺ 。\n比如 花儿 huār → xuɑɺ 。" },
+  { k:"quiz", c:"儿", p:"ér", a:"əɺ³⁵", keys:"e= L> 3^ 5^" },
+  { k:"quiz", c:"歌儿", p:"gēr", a:"kɤɺ⁵⁵", keys:"k O> L> 5^ 5^", err:"韵母后面直接加 ɺ（L>）" },
+  { k:"quiz", c:"花儿", p:"huār", a:"xuɑɺ⁵⁵", keys:"x u a= L> 5^ 5^", err:"ua 里的 a 是 ɑ，再加 ɺ" },
+  { k:"quiz", c:"本儿", p:"běnr", a:"pəɺ²¹⁴", keys:"p e= L> 2^ 1^ 4^", err:"en 里的 e 读 ə，n 脱落加 ɺ" },
+  { k:"quiz", c:"豆儿", p:"dòur", a:"touɺ⁵¹", keys:"t o u L> 5^ 1^" },
+]},
+
+// ---------------- 9 零声母 ----------------
+{ id:"zero", nav:"零声母", steps:[
+  { k:"say", t:"前面我们学习了儿化。倒数第二关：开头没有声母的音节。" },
+  { k:"say", t:"拼音的 y、w 其实不是声母，是韵头 i、u 的「改写」。\n记音时把它们还原：yi → i，wu → u 。" },
+  { k:"type", t:"打出拼音 yi 对应的音标", a:"i", keys:"i" },
+  { k:"type", t:"打出拼音 wu 对应的音标", a:"u", keys:"u" },
+  { k:"say", t:"其他 y 开头的，y 记作 [j]：\nyan → jæn　ye → jɛ　you → jou\nw 开头的照写 w：wa → wɑ；yu 开头就是 ü：yue → yɛ 。\n注意：介音只记一次，别重复。" },
+  { k:"type", t:"打出拼音 yan 对应的音标", a:"jæn", keys:"j a< n" },
+  { k:"type", t:"打出拼音 wa 对应的音标", a:"wɑ", keys:"w a=" },
+  { k:"quiz", c:"一", p:"yī", a:"i⁵⁵", keys:"i 5^ 5^" },
+  { k:"quiz", c:"五", p:"wǔ", a:"u²¹⁴", keys:"u 2^ 1^ 4^" },
+  { k:"quiz", c:"烟", p:"yān", a:"jæn⁵⁵", keys:"j a< n 5^ 5^", err:"y 记作 j；ian 里的 a 读 æ" },
+  { k:"quiz", c:"叶", p:"yè", a:"jɛ⁵¹", keys:"j e< 5^ 1^", err:"ye → jɛ，e 读 ɛ（e<）" },
+  { k:"quiz", c:"右", p:"yòu", a:"jou⁵¹", keys:"j o u 5^ 1^" },
+  { k:"quiz", c:"蛙", p:"wā", a:"wɑ⁵⁵", keys:"w a= 5^ 5^", err:"wa 里的 a 是 ɑ（a=）" },
+  { k:"quiz", c:"月", p:"yuè", a:"yɛ⁵¹", keys:"y e< 5^ 1^", err:"yu 开头就是 ü，写 y；e 读 ɛ" },
+]},
+
+// ---------------- 10 变调 ----------------
+{ id:"sandhi", nav:"变调", steps:[
+  { k:"say", t:"最后一条规律：变调——字连起来读，调值会变。我们只学最常用的三条，完整版见右上角「键位速查」→ 变调规则完整版。" },
+  { k:"say", t:"① 两个上声相连，前一个 214 变 35：\n你好 nǐhǎo → ni³⁵ xɑu²¹⁴ 。" },
+  { k:"say", t:"②「不」在去声前 51 变 35：不是 bùshì → pu³⁵ ʂʅ⁵¹" },
+  { k:"say", t:"③「一」在非去声前 55 变 51：一天 → i⁵¹ tʰiæn⁵⁵" },
+  { k:"quiz", c:"你好", p:"nǐ hǎo", a:"ni³⁵xɑu²¹⁴", keys:"n i 3^5^ x a= u 2^1^4^", err:"两个上声相连，前一个要变 35" },
+  { k:"quiz", c:"不是", p:"bù shì", a:"pu³⁵ʂʅ⁵¹", keys:"p u 3^5^ s< Z| 5^1^", err:"「不」在去声前变 35" },
+  { k:"quiz", c:"一天", p:"yī tiān", a:"i⁵¹tʰiæn⁵⁵", keys:"i 5^1^ t h^ i a< n 5^5^", err:"「一」在非去声前变 51" },
+  { k:"say", t:"补充：「一」在去声前也会变——55 变 35。比如 一路 yílù。\n其他变调（上声+非上声、三音节结构、轻声、啊的连读）都收在速查表里。" },
+]},
+
+];
+const FREE = [
+  // —— 单韵母 × 6 ——
+  { c:"大", a:["tA⁵¹"] },
+  { c:"哦", a:["o³⁵"] },
+  { c:"鹅", a:["ɤ³⁵"] },
+  { c:"一", a:["i⁵⁵"] },
+  { c:"五", a:["u²¹⁴"] },
+  { c:"鱼", a:["y³⁵"] },
+  // —— 声母 × 21 ——
+  { c:"爸", a:["pA⁵¹"] },
+  { c:"怕", a:["pʰA⁵¹"] },
+  { c:"妈", a:["mA⁵⁵"] },
+  { c:"发", a:["fA⁵⁵"] },
+  { c:"大", a:["tA⁵¹"] },
+  { c:"他", a:["tʰA⁵⁵"] },
+  { c:"那", a:["nA⁵¹"] },
+  { c:"拉", a:["lA⁵⁵"] },
+  { c:"哥", a:["kɤ⁵⁵"] },
+  { c:"可", a:["kʰɤ²¹⁴"] },
+  { c:"喝", a:["xɤ⁵⁵"] },
+  { c:"鸡", a:["tɕi⁵⁵"] },
+  { c:"七", a:["tɕʰi⁵⁵"] },
+  { c:"西", a:["ɕi⁵⁵"] },
+  { c:"知", a:["tʂʅ⁵⁵"] },
+  { c:"吃", a:["tʂʰʅ⁵⁵"] },
+  { c:"是", a:["ʂʅ⁵¹"] },
+  { c:"日", a:["ʐʅ⁵¹"] },
+  { c:"子", a:["tsɿ²¹⁴"] },
+  { c:"此", a:["tsʰɿ²¹⁴"] },
+  { c:"四", a:["sɿ⁵¹"] },
+  // —— a 的四种变体 × 10 ——
+  { c:"白", a:["pai³⁵"] },
+  { c:"南", a:["nan³⁵"] },
+  { c:"俩", a:["liA²¹⁴"] },
+  { c:"家", a:["tɕiA⁵⁵"] },
+  { c:"光", a:["kuɑŋ⁵⁵"] },
+  { c:"老", a:["lɑu²¹⁴"] },
+  { c:"花", a:["xuɑ⁵⁵"] },
+  { c:"天", a:["tʰiæn⁵⁵"] },
+  { c:"远", a:["yæn²¹⁴"] },
+  { c:"短", a:["tuæn²¹⁴"] },
+  // —— e 的四种变体 × 8 ——
+  { c:"了", a:["lɤ"] },
+  { c:"哥", a:["kɤ⁵⁵"] },
+  { c:"黑", a:["xei⁵⁵"] },
+  { c:"飞", a:["fei⁵⁵"] },
+  { c:"别", a:["piɛ³⁵"] },
+  { c:"学", a:["ɕyɛ³⁵"] },
+  { c:"真", a:["tʂən⁵⁵"] },
+  { c:"冷", a:["ləŋ²¹⁴"] },
+  // —— i 的三种变体 × 6 ——
+  { c:"四", a:["sɿ⁵¹"] },
+  { c:"词", a:["tsʰɿ³⁵"] },
+  { c:"是", a:["ʂʅ⁵¹"] },
+  { c:"日", a:["ʐʅ⁵¹"] },
+  { c:"鸡", a:["tɕi⁵⁵"] },
+  { c:"里", a:["li²¹⁴"] },
+  // —— 复韵母缩写 × 6 ——
+  { c:"东", a:["tuŋ⁵⁵"] },
+  { c:"用", a:["yŋ⁵¹"] },
+  { c:"村", a:["tsʰuən⁵⁵"] },
+  { c:"水", a:["ʂuei²¹⁴"] },
+  { c:"六", a:["liou⁵¹"] },
+  { c:"多", a:["tuo⁵⁵"] },
+  // —— 儿化 × 5 ——
+  { c:"花儿", a:["xuɑɺ⁵⁵"] },
+  { c:"本儿", a:["pəɺ²¹⁴"] },
+  { c:"影儿", a:["iŋɺ²¹⁴"] },
+  { c:"豆儿", a:["touɺ⁵¹"] },
+  { c:"小孩儿", a:["ɕiɑu²¹xɑɺ³⁵"] },
+  // —— 零声母 × 5 ——
+  { c:"我", a:["wo²¹⁴"] },
+  { c:"有", a:["jou²¹⁴"] },
+  { c:"爱", a:["ai⁵¹"] },
+  { c:"欧", a:["ou⁵⁵"] },
+  { c:"安", a:["an⁵⁵"] },
+  // —— 变调 × 25 ——
+  { c:"你好", a:["ni³⁵xɑu²¹⁴"] },
+  { c:"展览馆", a:["tʂan³⁵lan³⁵kuan²¹⁴"] },
+  { c:"很高", a:["xən²¹kɑu⁵⁵"] },
+  { c:"很长", a:["xən²¹tʂʰɑŋ³⁵"] },
+  { c:"很大", a:["xən²¹tA⁵¹"] },
+  { c:"走走", a:["tsou³⁵tsou⁰"] },
+  { c:"奶奶", a:["nai²¹nai⁰"] },
+  { c:"一起", a:["i⁵¹tɕʰi²¹⁴"] },
+  { c:"一个", a:["i³⁵kɤ⁰"] },
+  { c:"一生", a:["i⁵¹ʂəŋ⁵⁵"] },
+  { c:"一年", a:["i⁵¹niæn³⁵"] },
+  { c:"不是", a:["pu³⁵ʂʅ⁵¹"] },
+  { c:"不要", a:["pu³⁵jiɑu⁵¹"] },
+  { c:"不好", a:["pu⁵¹xɑu²¹⁴"] },
+  { c:"想一想", a:["ɕiɑŋ²¹⁴i⁰ɕiɑŋ²¹⁴"] },
+  { c:"好不好", a:["xɑu²¹⁴pu⁰xɑu²¹⁴"] },
+  { c:"一路", a:["i³⁵lu⁵¹"] },
+  { c:"一律", a:["i³⁵ly⁵¹"] },
+  { c:"能不能", a:["nəŋ³⁵pu⁰nəŋ³⁵"] },
+  { c:"理想", a:["li³⁵ɕiɑŋ²¹⁴"] },
+  { c:"语法", a:["y³⁵fA²¹⁴"] },
+  // —— 综合 × 8 ——
+  { c:"电话", a:["tiæn⁵¹xuɑ⁵¹"] },
+  { c:"音乐", a:["in⁵⁵yɛ⁵¹"] },
+  { c:"学习", a:["ɕyɛ³⁵ɕi³⁵"] },
+  { c:"老师", a:["lɑu²¹ʂʅ⁵⁵"] },
+  { c:"工作", a:["kuŋ⁵⁵tsuo⁵¹"] },
+  { c:"问题", a:["uən⁵¹tʰi³⁵"] },
+  { c:"语言", a:["y²¹jæn³⁵"] },
+  { c:"中国", a:["tʂuŋ⁵⁵kuo³⁵"] },
+];
+const REF = {
+  initials: [
+    ["b","p","p"],["p","pʰ","p h^"],["m","m","m"],["f","f（部分教材 fʰ）","f"],
+    ["d","t","t"],["t","tʰ","t h^"],["n","n","n"],["l","l","l"],
+    ["g","k","k"],["k","kʰ","k h^"],["h","x","x"],
+    ["j","tɕ","t c<"],["q","tɕʰ","t c< h^"],["x","ɕ","c<"],
+    ["zh","tʂ","t s<"],["ch","tʂʰ","t s< h^"],["sh","ʂ","s<"],["r","ʐ","z<"],
+    ["z","ts","t s"],["c","tsʰ","t s h^"],["s","s","s"],
+    ["y","j","j"],["w","w","w"],
+  ],
+  vowels: [
+    ["a","A","Shift+A"],["o","o","o"],["e","ɤ","O>"],
+    ["i","i","i"],["u","u","u"],["ü","y","y"],
+  ],
+  aVariants: [
+    ["ai / an","a","a"],["ia","A","Shift+A"],["辅音后 · 单用","A","Shift+A"],
+    ["ang / ao / ua","ɑ","a="],["ian / üan","æ","a<"],
+  ],
+  eVariants: [
+    ["辅音后 · 单用","ɤ","O>"],["ei / ui","e","e"],
+    ["ie / üe","ɛ","e<"],["en / eng / un / ueng / er","ə","e="],
+  ],
+  iVariants: [
+    ["z c s 后","ɿ","z|"],["zh ch sh r 后","ʅ","Z|"],["其他","i","i"],
+  ],
+  specials: [
+    ["送气","ʰ","h^"],["舌根鼻音","ŋ","n>"],["儿化","ɺ","L>"],
+    ["上标数字","⁵","5^"],["舌面擦音","ɕ","c<"],["卷舌擦音","ʂ","s<"],["卷舌浊擦","ʐ","z<"],
+  ],
+  tones: [
+    ["阴平","55"],["阳平","35"],["上声","214"],["去声","51"],["轻声","⁰"],
+  ],
+  sandhi: [
+    ["上上相连","前一个 214→35","你好 ni³⁵xɑu²¹⁴"],
+    ["上声+非上声","前一个 214→21（半上）","很高 21 35"],
+    ["上声三音节（展览馆）","35+35+214","展览馆"],
+    ["上声三音节（纸老虎）","21+35+214","纸老虎"],
+    ["上声+轻声·原本上声","35+0（走走）/ 21+0（奶奶）","走走 / 奶奶"],
+    ["一+去声","55→35","一路 yílù"],
+    ["一+非去声","55→51","一生 yìshēng"],
+    ["不+去声","51→35","不是 búshì"],
+    ["一/不夹中间","读轻声","好不好 想一想"],
+    ["啊的连读·ao/eêü 后","变 ya（呀）","花呀 huāya"],
+    ["啊的连读·u 后","变 wa（哇）","走哇 zǒuwa"],
+    ["啊的连读·n 后","变 na（哪）","天啊 tiānna"],
+    ["啊的连读·ng 后","变 nga","唱啊 chàngnga"],
+  ],
+};
+</script>
+<script>
+// ============================================================
+// IPA 打字课 · 工作台（方向 A）
+// 底层学习逻辑 / 测评规则 / 题目答案 与原版完全一致；
+// 本次改动仅涉及：布局、信息层级、导航可达性、错误反馈颗粒度。
+// ============================================================
+const $ = id => document.getElementById(id);
+const ghost=$("ghost"), flowEl=$("flow"), promptEl=$("prompt"),
+  charEl=$("quiz-char"), pyEl=$("quiz-pinyin"), echoEl=$("echo"),
+  fbEl=$("feedback"), hintEl=$("hint"), sayBtn=$("say-btn"), sayLabel=$("say-label"),
+  soundBtn=$("sound-btn"), warnEl=$("verify-warn"), btnEl=$("action-btn"),
+  tocEl=$("toc"), crumbEl=$("crumb"), dotsEl=$("dots"),
+  prevBtn=$("prev-btn"), nextBtn=$("next-btn"), progFill=$("prog-fill"),
+  progNum=$("prog-num"), progLabel=$("prog-label"), rightEl=$("right");
+
+const LS="ipaKmWorkbench", LS_VER=1;
+function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,v);return true}catch(e){return false}}
+function lsRemove(k){try{localStorage.removeItem(k)}catch(e){}}
+if(location.hash==="#reset"){lsRemove(LS);try{history.replaceState(null,"",location.pathname)}catch(e){}}
+else if(parseInt(lsGet(LS+"_ver")||"0")!==LS_VER){lsRemove(LS);lsSet(LS+"_ver",LS_VER);}
+
+function load(){
+  try{const p=JSON.parse(lsGet(LS));
+    if(p&&typeof p==="object")return{si:0,pi:0,done:false,seenWrongGuide:false,freeN:0,
+      completed:[],wrongBook:{},doneSteps:{},lastSeenWrong:0,sound:true,autoSpeak:true,...p};}catch(e){}
+  return{si:0,pi:0,done:false,seenWrongGuide:false,freeN:0,completed:[],wrongBook:{},doneSteps:{},lastSeenWrong:0,sound:true,autoSpeak:true};
+}
+function save(){S.wrongBook=wrongBook;lsSet(LS,JSON.stringify(S));}
+let S=load();
+S.sound=S.sound!==false; S.autoSpeak=S.autoSpeak!==false;
+
+let mode=S.done?"free":"learn";
+let wrong=0, busy=false;
+let lastFree=-1, freeN=S.freeN||0;
+let freeDeck=[], freeDeckIdx=0, freeHistory=[];
+let expandedStage={};
+let rightTab="points";
+let wrongBook=S.wrongBook||{};
+let verifyTimer=null;
+
+const IS_MAC=(()=>{const p=(navigator.userAgentData&&navigator.userAgentData.platform)||navigator.platform||"";
+  return /Mac|iPhone|iPad|iPod/i.test(p)||/Macintosh|iPhone|iPad/i.test(navigator.userAgent||"");})();
+const KEY_HINT=IS_MAC?"菜单栏输入法图标 → IPA (SIL)":"Win + 空格";
+if(IS_MAC)STAGES.forEach(st=>st.steps.forEach(s=>{if(s.mac)Object.assign(s,s.mac)}));
+
+const norm=s=>(s||"").replace(/\s+/g,"");
+const stepKey=()=>S.si+"-"+S.pi;
+const isStepDone=()=>!!S.doneSteps[stepKey()];
+const cur=()=>STAGES[S.si].steps[S.pi];
+const STAGE_LIST=STAGES.map((s,i)=>({...s,idx:i})).filter(s=>s.id!=="install");
+const totalStages=STAGE_LIST.length;
+
+// ============================================================
+// 键位映射：IPA 单元 → 按键序列（用于生成 FREE 的 keys，并驱动错误定位）
+// ============================================================
+const UNIT_KEYS={
+  "p":["p"],"t":["t"],"k":["k"],"m":["m"],"n":["n"],"l":["l"],"f":["f"],"s":["s"],
+  "x":["x"],"j":["j"],"w":["w"],
+  "pʰ":["p","h^"],"tʰ":["t","h^"],"kʰ":["k","h^"],
+  "tɕ":["t","c<"],"tɕʰ":["t","c<","h^"],"ɕ":["c<"],
+  "tʂ":["t","s<"],"tʂʰ":["t","s<","h^"],"ʂ":["s<"],"ʐ":["z<"],
+  "ts":["t","s"],"tsʰ":["t","s","h^"],
+  "ŋ":["n>"],"ɺ":["L>"],
+  "a":["a"],"A":["A"],"ɑ":["a","="],"æ":["a","<"],
+  "e":["e"],"ɤ":["O",">"],"ə":["e","="],"ɛ":["e","<"],
+  "i":["i"],"u":["u"],"y":["y"],"o":["o"],
+  "ɿ":["z","|"],"ʅ":["Z","|"],
+  "ʰ":["h","^"]
+};
+const TONE_KEYS={"⁰":["0","^"],"¹":["1","^"],"²":["2","^"],"³":["3","^"],"⁴":["4","^"],
+  "⁵":["5","^"],"⁶":["6","^"],"⁷":["7","^"],"⁸":["8","^"],"⁹":["9","^"]};
+const SYMBOLS=Object.keys(UNIT_KEYS).sort((a,b)=>b.length-a.length);
+const SUP="⁰¹²³⁴⁵⁶⁷⁸⁹";
+// FREE 词条的拼音（补全错题本缺失列；不改变任何判定逻辑）
+const FREE_PY={"大":"dà","哦":"ó","鹅":"é","一":"yī","五":"wǔ","鱼":"yú","爸":"bà","怕":"pà",
+  "妈":"mā","发":"fā","他":"tā","那":"nà","拉":"lā","哥":"gē","可":"kě","喝":"hē","鸡":"jī",
+  "七":"qī","西":"xī","知":"zhī","吃":"chī","是":"shì","日":"rì","子":"zǐ","此":"cǐ","四":"sì",
+  "白":"bái","南":"nán","俩":"liǎ","家":"jiā","光":"guāng","老":"lǎo","花":"huā","天":"tiān",
+  "远":"yuǎn","短":"duǎn","了":"le","黑":"hēi","飞":"fēi","别":"bié","学":"xué","真":"zhēn",
+  "冷":"lěng","词":"cí","里":"lǐ","东":"dōng","用":"yòng","村":"cūn","水":"shuǐ","六":"liù",
+  "多":"duō","花儿":"huār","本儿":"běnr","影儿":"yǐngr","豆儿":"dòur","小孩儿":"xiǎo hái r",
+  "我":"wǒ","有":"yǒu","爱":"ài","欧":"ōu","安":"ān","你好":"nǐ hǎo","展览馆":"zhǎn lǎn guǎn",
+  "很高":"hěn gāo","很长":"hěn cháng","很大":"hěn dà","走走":"zǒu zǒu","奶奶":"nǎi nai",
+  "一起":"yì qǐ","一个":"yí gè","一生":"yì shēng","一年":"yì nián","不是":"bú shì",
+  "不要":"bú yào","不好":"bù hǎo","想一想":"xiǎng yi xiǎng","好不好":"hǎo bù hǎo",
+  "一路":"yí lù","一律":"yí lǜ","能不能":"kěnéng","理想":"lǐ xiǎng","语法":"yǔ fǎ",
+  "电话":"diàn huà","音乐":"yīn yuè","学习":"xué xí","老师":"lǎo shī","工作":"gōng zuò",
+  "问题":"wèn tí","语言":"yǔ yán","中国":"zhōng guó"};
+const FREE_KEYS=(()=>{const m={};
+  FREE.forEach(q=>{m[q.c]=unitKeys(q.a[0])});return m;})();
+
+function toneKeys(str){const out=[];for(const ch of str)if(TONE_KEYS[ch])out.push(...TONE_KEYS[ch]);return out;}
+function unitKeys(ipa){
+  if(!ipa)return[];
+  const out=[];let i=0;
+  while(i<ipa.length){
+    if(SUP.includes(ipa[i])){out.push(...toneKeys(ipa[i]));i++;continue;}
+    if(ipa[i]>="0"&&ipa[i]<="9"){out.push(ipa[i],"^");i++;continue;}
+    let hit=null;
+    for(const s of SYMBOLS){if(s.length<=ipa.length-i&&ipa.startsWith(s,i)){hit=s;break;}}
+    if(hit){out.push(...UNIT_KEYS[hit]);i+=hit.length;}
+    else{i++;}
+  }
+  return out;
+}
+
+// ============================================================
+// 错误定位引擎：音素 token 化 → 序列对齐 → 单元级差异 → 针对性建议
+// ============================================================
+function tokenizeIPA(s){
+  const out=[];let i=0;
+  while(i<s.length){
+    const ch=s[i];
+    if(SUP.includes(ch)){let j=i;while(j<s.length&&SUP.includes(s[j]))j++;out.push({t:s.slice(i,j),k:"tone"});i=j;continue;}
+    if(ch>="0"&&ch<="9"){let j=i;while(j<s.length&&s[j]>="0"&&s[j]<="9")j++;out.push({t:s.slice(i,j),k:"plain"});i=j;continue;}
+    // 组合字母：ng 是舌根鼻音 ŋ 的常见误写，整体识别为一个 token
+    if(ch==="n"&&s[i+1]==="g"){out.push({t:"ng",k:"combo"});i+=2;continue;}
+    let hit=null;
+    for(const sym of SYMBOLS){if(sym.length<=s.length-i&&s.startsWith(sym,i)){hit=sym;break;}}
+    if(hit){out.push({t:hit,k:"sym"});i+=hit.length;}
+    else{out.push({t:ch,k:"unknown"});i++;}
+  }
+  return out;
+}
+// 序列对齐：sub=1，del/ins=1.05（略偏好「替换」而非「删+插」，以便定位到具体位置）
+function align(a,b){
+  const n=a.length,m=b.length;
+  const D=Array.from({length:n+1},()=>new Array(m+1).fill(0));
+  for(let i=0;i<=n;i++)D[i][0]=i*1.05;
+  for(let j=0;j<=m;j++)D[0][j]=j*1.05;
+  for(let i=1;i<=n;i++)for(let j=1;j<=m;j++){
+    const c=a[i-1].t===b[j-1].t?0:1;
+    D[i][j]=Math.min(D[i-1][j-1]+c,D[i-1][j]+1.05,D[i][j-1]+1.05);
+  }
+  const ops=[];let i=n,j=m;
+  while(i>0&&j>0){
+    const c=a[i-1].t===b[j-1].t?0:1;
+    if(Math.abs(D[i][j]-(D[i-1][j-1]+c))<1e-9){ops.unshift({ty:c?"sub":"eq",x:a[i-1],y:b[j-1]});i--;j--;}
+    else if(Math.abs(D[i][j]-(D[i-1][j]+1.05))<1e-9){ops.unshift({ty:"del",x:a[i-1]});i--;}
+    else{ops.unshift({ty:"ins",y:b[j-1]});j--;}
+  }
+  while(i>0){ops.unshift({ty:"del",x:a[--i]});}
+  while(j>0){ops.unshift({ty:"ins",y:b[--j]});}
+  return ops;
+}
+// 元音混淆家族：解释「为什么这里是这个音」
+const FAM={
+  "A|a":"这里是 ia 里的 a，读央低元音 [A]，不是前元音 [a]。",
+  "a|A":"单韵母 a、以及辅音后的 a，都读央低元音 [A]，要按 Shift+A。",
+  "ɑ|a":"ao / ang / ua 里的 a 读后元音 [ɑ]，不是前元音 [a]。",
+  "a|ɑ":"这个环境（ai / an）读前元音 [a]，不是后元音 [ɑ]。",
+  "æ|a":"ian / üan 里的 a 读前低元音 [æ]，不是 [a]。",
+  "a|æ":"这个环境（ai / an）读 [a]，不是 [æ]。",
+  "ɑ|A":"ao / ang / ua 里的 a 读后元音 [ɑ]，不是央低 [A]。",
+  "A|ɑ":"单用或辅音后读 [A]，不是后元音 [ɑ]。",
+  "æ|A":"ian / üan 里的 a 读 [æ]，不是央低 [A]。",
+  "A|æ":"ia 里的 a 读央低 [A]，不是 [æ]。",
+  "ɤ|e":"e 单用、或作韵母主体时读 [ɤ]，不是 [e]。",
+  "e|ɤ":"这里 e 在 ei / ie / ui 环境，读 [e]；单用的 e 才读 [ɤ]。",
+  "ə|e":"en / eng / un / er 里的 e 读 [ə]，不是 [e]。",
+  "e|ə":"单用或辅音后的 e 读 [ɤ]；en / eng 组才读 [ə]。",
+  "ɛ|e":"ie / üe 里的 e 读 [ɛ]，不是 [e]。",
+  "e|ɛ":"这里 e 在 ei / ui 环境，读 [e]，不是 [ɛ]。",
+  "ɤ|ə":"en / eng / un / er 组读 [ə]；单用读 [ɤ]。",
+  "ə|ɤ":"单用或辅音后的 e 读 [ɤ]，不是 [ə]。",
+  "ɛ|ɤ":"ie / üe 组读 [ɛ]，不是 [ɤ]。",
+  "ɤ|ɛ":"ie / üe 组读 [ɛ]，不是 [ɤ]。",
+  "ə|ɛ":"en / eng 组读 [ə]，不是 [ɛ]。",
+  "ɛ|ə":"ie / üe 组读 [ɛ]，不是 [ə]。",
+  "ɿ|i":"z / c / s 后面的 i 读舌尖前元音 [ɿ]，不是 [i]。",
+  "i|ɿ":"这个 i 不在 z / c / s 后面，读本音 [i]。",
+  "ʅ|i":"zh / ch / sh / r 后面的 i 读舌尖后元音 [ʅ]，不是 [i]。",
+  "i|ʅ":"这个 i 不在 zh / ch / sh / r 后面，读本音 [i]。",
+  "ɿ|ʅ":"平舌 z / c / s 后读 [ɿ]，不是 [ʅ]。",
+  "ʅ|ɿ":"卷舌 zh / ch / sh / r 后读 [ʅ]，不是 [ɿ]。",
+  "n|ŋ":"韵尾 ng 要写成舌根鼻音 [ŋ]（一个符号），不是两个字母 n + g。",
+  "ŋ|n":"这个位置是普通 [n]，不是舌根鼻音 [ŋ]。",
+  "x|ɕ":"x 是舌面清擦音 [ɕ]，不是舌根清擦音 [x]。",
+  "ɕ|x":"这里是舌根清擦音 [x]，不是舌面 [ɕ]。",
+  "tɕ|tʂ":"j / q / x 是舌面音 [tɕ]，不是卷舌音 [tʂ]。",
+  "tʂ|tɕ":"zh / ch / sh 是卷舌音 [tʂ]，不是舌面音 [tɕ]。",
+  "tɕ|tʂʰ":"j / q / x 属舌面音 [tɕ]，不是卷舌送气 [tʂʰ]。",
+  "tʂʰ|tɕʰ":"ch 是卷舌送气 [tʂʰ]，不是舌面送气 [tɕʰ]。",
+  "tɕʰ|tʂʰ":"q 是舌面送气 [tɕʰ]，不是卷舌送气 [tʂʰ]。",
+  "s|ʂ":"sh 要写成卷舌擦音 [ʂ]，不是平舌 [s]。",
+  "ʂ|s":"这里是平舌 [s]，不是卷舌 [ʂ]。",
+  "ts|tʂ":"z / c 是平舌塞擦音 [ts]，不是卷舌 [tʂ]。",
+  "tʂ|ts":"这里是平舌 [ts]，不是卷舌 [tʂ]。",
+  "t|tʰ":"这个声母是送气音，要写成 [tʰ]（后面补上 ʰ）。",
+  "tʰ|t":"这个声母要写成送气音 [tʰ]，你打成了不送气的 [t]。",
+  "p|pʰ":"这个声母是送气音，要写成 [pʰ]（后面补上 ʰ）。",
+  "pʰ|p":"这个声母要写成送气音 [pʰ]，你打成了不送气的 [p]。",
+  "k|kʰ":"这个声母是送气音，要写成 [kʰ]（后面补上 ʰ）。",
+  "kʰ|k":"这个声母要写成送气音 [kʰ]，你打成了不送气的 [k]。",
+  "o|u":"ong 实际读 [uŋ]，韵腹是 u 不是 o。",
+  "u|o":"这里韵腹是 o，不是 u（注意 ong 才是 uŋ）。"
+};
+// 「多字符组合」被拆成单个音位时的解释（例如 ŋ 写成 ng、tɕ 写成 t ɕ）
+// 匹配方式：expected 侧是一个组合音位，user 侧被拆成了两段
+const COMBO=[
+  {exp:"ŋ",parts:["n","g"],why:"ng 是两个字母，但舌根鼻音只有一个符号 ŋ。",
+   fix:"把 ng 合成一个符号 ŋ（先按 n，再按 >）。"},
+  {exp:"tɕ",parts:["t","ɕ"],why:"tɕ 是一个完整的舌面塞擦音，不能拆开打。",
+   fix:"连着打 tɕ（先按 t，再按 c<）。"},
+  {exp:"tʂ",parts:["t","ʂ"],why:"tʂ 是一个完整的卷舌塞擦音，不能拆开打。",
+   fix:"连着打 tʂ（先按 t，再按 s<）。"},
+  {exp:"ts",parts:["t","s"],why:"ts 是一个完整的平舌塞擦音，不能拆开打。",
+   fix:"连着打 ts（先按 t，再按 s）。"},
+  {exp:"tɕʰ",parts:["t","ɕ","ʰ"],why:"q 是舌面送气塞擦音 tɕʰ，三个符号要连着打。",
+   fix:"连着打 tɕʰ（先按 t，再按 c<，再按 h ^）。"},
+  {exp:"tʂʰ",parts:["t","ʂ","ʰ"],why:"ch 是卷舌送气塞擦音 tʂʰ，三个符号要连着打。",
+   fix:"连着打 tʂʰ（先按 t，再按 s<，再按 h ^）。"},
+  {exp:"tsʰ",parts:["t","s","ʰ"],why:"c 是平舌送气塞擦音 tsʰ，三个符号要连着打。",
+   fix:"连着打 tsʰ（先按 t，再按 s，再按 h ^）。"}
+];
+// 缩写规则：缺字时的针对性解释
+const ABBREV=[
+  {exp:"iou",miss:"o",why:"iu 是 iou 的缩写，记音要写全成 iou。"},
+  {exp:"uei",miss:"e",why:"ui 是 uei 的缩写，记音要写全成 uei。"},
+  {exp:"uən",miss:"ə",why:"un 是 uen 的缩写，记音要写全成 uən。"}
+];
+function unitLabel(u){
+  if(!u)return"—";
+  if(u.k==="tone")return u.t;
+  if(u.k==="plain")return u.t;
+  return u.t;
+}
+function whyFor(from,to){
+  if(FAM[from+"|"+to])return FAM[from+"|"+to];
+  return null;
+}
+function toneWhy(exp,got){
+  if(exp.k==="tone"&&got.k==="plain")
+    return "声调数字要用上标：先按数字，再按 ^。" + (exp.t.length?`（${exp.t} → 先按 ${[...exp.t].map(c=>c+" ^").join("，")}）`:"");
+  if(exp.k==="tone"&&got.k==="tone"){
+    if(got.t.length<exp.t.length&&exp.t.startsWith(got.t))
+      return `调值只写了一半，应该写全 ${exp.t}（${exp.t.split("").map(c=>c+" ^").join("，")}）。`;
+    return `调值不对：这里应该是 ${exp.t}（${exp.t.split("").map(c=>c+" ^").join("，")}），你打成了 ${got.t}。`;
+  }
+  if(exp.k==="tone"&&got.k==="sym")
+    return `这里要标声调 ${exp.t}，不能直接打字母或普通符号。`;
+  if(exp.k==="sym"&&(got.k==="tone"||got.k==="plain"))
+    return `这里不该出现声调或数字：${exp.t} 是符号本身，不带调值。`;
+  if(exp.k==="tone"&&got.k==="plain")
+    return `声调数字要用上标：先按数字，再按 ^。`;
+  if(exp.k==="sym"&&got.k==="sym"&&/^[0-9]+$/.test(got.t))
+    return `这里应该是符号 ${exp.t}，不是数字 ${got.t}。`;
+  return null;
+}
+/**
+ * 生成诊断结果：定位到具体音位 + 原因 + 修改建议
+ */
+function diagnoseDetailed(expected, got){
+  const issues=[];
+  // 0) 整串级异常优先（全角 / 键序）
+  if(/[＞＜＝｜＾]/.test(got))
+    return[{pos:null,title:"打出了全角符号",why:"当前输入法还在中文模式，敲出的 ＞ ＜ ＝ ｜ ＾ 都是全角字符。",
+      fix:`先切换到英文键盘或 IPA (SIL)（${KEY_HINT}），再重打一遍。`,keys:null}];
+  if(got.includes("=a"))
+    return[{pos:null,title:"键序反了",why:"你打出了「=a」，说明输入法处于 Before 模式（先修饰键后主键）。",
+      fix:`按 ${IS_MAC?"Option + -":"RAlt + -"} 切回 After 模式，再打一次。`,keys:null}];
+
+  const eu=tokenizeIPA(expected), gu=tokenizeIPA(got);
+  const ops=align(eu,gu);
+  let idx=0;
+  for(let oi=0;oi<ops.length;oi++){
+    const op=ops[oi];
+    if(op.ty==="eq"){idx++;continue;}
+    const e=op.x, g=op.y;
+
+    // --- 组合字母 ng 与符号 ŋ 的互换 ---
+    if((op.ty==="sub"||op.ty==="eq")&&(e.k==="combo"||g.k==="combo")){
+      const comboSym=e.k==="combo"?"ŋ":e.t;
+      const comboGot=g.k==="combo"?"ng":g.t;
+      issues.push({pos:idx,exp:comboSym,got:comboGot,
+        why:e.k==="combo"
+          ?"ng 是两个字母，但舌根鼻音只有一个符号 ŋ。"
+          :"这个位置是舌根鼻音 ŋ，不是两个字母 ng。",
+        fix:e.k==="combo"
+          ?"把 ng 合成一个符号 ŋ（先按 n，再按 >）。"
+          :"把 ng 合成一个符号 ŋ（先按 n，再按 >）。",
+        keys:UNIT_KEYS["ŋ"]});
+      idx++; continue;
+    }
+
+    // --- 组合符号被拆开 / 被合成：把一个音位拆成多个，或把多个合成一个 ---
+    // 形态 A：expected 一个组合音位，user 拆成 parts.length 个 token（del + ins*）
+    if(op.ty==="del"){
+      const combo=COMBO.find(c=>c.exp===e.t);
+      if(combo&&oi+combo.parts.length<=ops.length){
+        let ok=true;
+        for(let k=0;k<combo.parts.length;k++){
+          const nxt=ops[oi+k+1];
+          if(!nxt||nxt.ty!=="ins"||nxt.y.t!==combo.parts[k]){ok=false;break;}
+        }
+        if(ok){
+          issues.push({pos:idx,exp:combo.exp,got:combo.parts.join(""),why:combo.why,fix:combo.fix,
+            keys:UNIT_KEYS[combo.exp]||toneKeys(combo.exp)});
+          idx+=combo.parts.length+1; oi+=combo.parts.length; continue;
+        }
+      }
+    }
+    // 形态 B：expected 多个 token，user 合成一个组合音位（sub/ins + eq*）
+    if(op.ty==="ins"||op.ty==="sub"){
+      const gotToken=(op.ty==="ins"?op.y.t:op.x.t);
+      const combo=COMBO.find(c=>c.exp===gotToken);
+      if(combo&&oi+combo.parts.length<=ops.length){
+        let ok=true;
+        for(let k=0;k<combo.parts.length;k++){
+          const nxt=ops[oi+1+k];
+          if(!nxt||nxt.ty!=="del"||nxt.x.t!==combo.parts[k]){ok=false;break;}
+        }
+        if(ok){
+          issues.push({pos:idx,exp:combo.parts.join(""),got:combo.exp,why:combo.why,fix:combo.fix,
+            keys:UNIT_KEYS[combo.exp]||toneKeys(combo.exp)});
+          idx+=combo.parts.length+1; oi+=combo.parts.length; continue;
+        }
+      }
+    }
+    // --- 送气符号被单独漏掉 / 多加 ---
+    if(op.ty==="del"&&e.t==="ʰ"){
+      issues.push({pos:idx,exp:"ʰ",got:null,
+        why:"这个声母是送气音，音标后面必须跟送气符号 ʰ（拼音声母 p / t / k / c / ch / q 都要带）。",
+        fix:"补上 ʰ（先按 h，再按 ^）。",keys:UNIT_KEYS["ʰ"]});
+      idx++; continue;
+    }
+    if(op.ty==="ins"&&g.t==="ʰ"){
+      issues.push({pos:idx,exp:null,got:"ʰ",
+        why:"这个声母是不送气清音，不需要送气符号 ʰ。",
+        fix:"删掉 ʰ。",keys:null});
+      idx++; continue;
+    }
+
+    if(op.ty==="del"){
+      // 缺字：查缩写规则
+      let why=null, fix=null;
+      for(const ab of ABBREV){
+        if(expected.includes(ab.exp)&&ab.miss===e.t){why=ab.why;fix=`正确写法是 ${ab.exp}。`;break;}
+      }
+      if(!why){
+        if(e.t==="ʰ"){why="这个声母是送气音，音标后面必须跟送气符号 ʰ。";fix=`在 ${e.t} 后面补上 ʰ（先按 h，再按 ^）。`;}
+        else if(e.t==="ɺ"){why="儿化音节要在韵母后加儿化标记 ɺ。";fix=`在末尾补上 ɺ（大写 L，再按 >）。`;}
+        else if(e.t==="ŋ"){why="韵尾 ng 要写成一个舌根鼻音符号 ŋ。";fix=`补上 ŋ（先按 n，再按 >）。`;}
+        else if(e.k==="tone"){why=`这个词带调，需要标出调值 ${e.t}。`;fix=`在末尾补上 ${e.t}（${e.t.split("").map(c=>c+" ^").join("，")}）。`;}
+        else{why=`正确写法里只有 ${e.t}，后面没有这个位置了。`;fix=`补上 ${e.t}。`;}
+      }
+      issues.push({pos:idx,exp:e.t,got:null,why,fix,keys:UNIT_KEYS[e.t]||toneKeys(e.t)});
+    }else if(op.ty==="ins"){
+      issues.push({pos:idx,exp:null,got:g.t,
+        why:`这个位置不需要额外的符号，删掉后长度就对了。`,
+        fix:`删掉 ${g.t}。`,keys:null});
+    }else{ // sub
+      let why=null,fix=null,keys=null;
+      if(e.k==="tone"||g.k==="tone"||e.k==="plain"||g.k==="plain"){
+        why=toneWhy(e,g);
+        fix=why?null:`第 ${idx+1} 个音位应该是 ${e.t}，你打成了 ${g.t}。`;
+      }else{
+        why=whyFor(e.t,g.t);
+        if(why){fix=`第 ${idx+1} 个音位应该是 ${e.t}。`;}
+        else{
+          // 跨音族的替换（如 ɤ→A）：标题已说明"哪个位置、该是什么"，
+          // 此处补充增量信息——正确符号的按键与所属音类
+          const cls=UNIT_KEYS[e.t]?"（这是一个辅音/元音符号）":"";
+          why=`${e.t} 是本课记法里的正确写法${cls}，先按它对应的键打出来。`;
+          fix=`把 ${g.t} 改成 ${e.t}。`;
+        }
+      }
+      keys=UNIT_KEYS[e.t]||toneKeys(e.t);
+      issues.push({pos:idx,exp:e.t,got:g.t,why,fix,keys});
+    }
+    idx++;
+  }
+  // 顺序颠倒检测：字符集相同但顺序不同
+  if(!issues.length&&eu.map(u=>u.t).join("")!==gu.map(u=>u.t).join("")){
+    issues.push({pos:null,exp:expected,got:got,why:"每个符号都对，但顺序反了。",
+      fix:`正确顺序是 ${expected}。`,keys:unitKeys(expected)});
+  }
+  if(!issues.length){
+    issues.push({pos:null,exp:expected,got:got,why:"整体写法与标准答案不一致。",
+      fix:`标准答案是 ${expected}。`,keys:unitKeys(expected)});
+  }
+  return issues;
+}
+
+// ============================================================
+// 状态与渲染
+// ============================================================
+function focusGhost(){ghost.focus();}
+document.addEventListener("click",()=>setTimeout(focusGhost,15));
+window.addEventListener("load",()=>{focusGhost();setTimeout(focusGhost,120);});
+
+function revealText(el,text,perChar=15){
+  el.innerHTML="";let idx=0;
+  text.split("\n").forEach((line,li)=>{
+    if(li>0)el.appendChild(document.createElement("br"));
+    [...line].forEach(ch=>{
+      const sp=document.createElement("span");sp.className="ch";
+      sp.style.animationDelay=(idx++*perChar)+"ms";
+      sp.textContent=ch===" "?"\u00A0":ch;
+      el.appendChild(sp);
+    });
+  });
+}
+function clearBoard(){
+  promptEl.innerHTML="";charEl.textContent="";pyEl.textContent="";
+  hintEl.textContent="";warnEl.style.display="none";btnEl.style.display="none";
+  ghost.value="";echoEl.textContent="";echoEl.classList.remove("ok","bad");
+  fbEl.className="";fbEl.innerHTML="";
+  sayBtn.style.display="none";sayLabel.textContent="发音";sayBtn.onclick=null;
+}
+function swap(fn){
+  flowEl.classList.add("leaving");
+  setTimeout(()=>{clearBoard();fn();flowEl.classList.remove("leaving");
+    flowEl.scrollTop=0;focusGhost();},260);
+}
+
+// ---------- 反馈卡渲染 ----------
+function renderFeedback(kind,title,why,fix,keys,diffRows){
+  let h=`<div class="fb-head"><span class="fb-badge">${kind}</span><span class="fb-title">${title}</span></div>`;
+  if(diffRows&&diffRows.length){
+    h+=`<div class="fb-diff">`;
+    diffRows.forEach(r=>{h+=`<span class="slot ${r.cls}">${r.txt}</span>`;});
+    h+=`</div>`;
+  }
+  if(why)h+=`<div class="fb-why">${why}</div>`;
+  if(keys&&keys.length){
+    h+=`<div class="fb-keys"><span class="lab">按键</span>`;
+    keys.forEach(k=>{h+=`<span class="kbd">${k}</span>`;});
+    h+=`</div>`;
+  }
+  if(fix)h+=`<div class="fb-fix">${fix}</div>`;
+  fbEl.innerHTML=h;fbEl.className="show "+kind.toLowerCase().replace(/[^a-z]/g,"");
+}
+
+// ============================================================
+// 发音（TTS）：与原版一致
+// ============================================================
+const SPEAKER_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.5L12 19V5L7.5 9.5H4z"/><path d="M15.5 9a4 4 0 010 6M18 6.5a7.5 7.5 0 011 11"/></svg>';
+const IPA_SAY={"pʰ":"怕","tʰ":"他","kʰ":"哭","tsʰ":"词","tʂʰ":"吃","tɕʰ":"七","tʂ":"知","tɕ":"鸡",
+  "ts":"资","p":"爸","t":"大","k":"哥","m":"妈","n":"拿","ŋ":"昂","l":"拉","f":"发","s":"丝",
+  "ʂ":"诗","ʐ":"日","ɕ":"西","x":"喝","j":"鸭","w":"蛙","a":"啊","A":"啊","ɑ":"啊","o":"哦","ɔ":"哦",
+  "ɤ":"饿","e":"诶","ɛ":"诶","i":"衣","u":"乌","y":"鱼","ə":"呢","æ":"烟","ɿ":"资","ʅ":"知","ɺ":"儿","ʰ":"怕"};
+let ttsVoices=[],ttsPrimed=false;
+function toast(msg){const el=$("toast");el.textContent=msg;el.classList.add("show");
+  clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove("show"),2400);}
+function loadVoices(){try{ttsVoices=window.speechSynthesis?speechSynthesis.getVoices():[]}catch(e){ttsVoices=[]}}
+if("speechSynthesis" in window){loadVoices();
+  try{speechSynthesis.addEventListener("voiceschanged",loadVoices)}catch(e){speechSynthesis.onvoiceschanged=loadVoices;}}
+function primeTTS(){if(ttsPrimed||!("speechSynthesis" in window))return;ttsPrimed=true;
+  try{const u=new SpeechSynthesisUtterance(" ");u.volume=0;speechSynthesis.speak(u)}catch(e){}}
+function pickVoice(){const zh=ttsVoices.filter(v=>/^zh/i.test(v.lang||""));
+  return zh.find(v=>/Ting-Ting|Meijia|Sinji|Yu-shu|Li-mu|Chinese/i.test(v.name||""))||zh[0]||null;}
+function speakText(text){
+  if(!text)return false;
+  if(!S.sound){toast("发音已关闭，点右上角喇叭开启");return false;}
+  if(!("speechSynthesis" in window)){toast("当前浏览器不支持系统朗读");return false;}
+  try{primeTTS();speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(text);u.lang="zh-CN";u.rate=.88;u.pitch=1;
+    const v=pickVoice();if(v)u.voice=v;speechSynthesis.speak(u);return true;}catch(e){return false;}
+}
+const IPA_TOKENS=Object.keys(IPA_SAY).sort((a,b)=>b.length-a.length);
+function speakIPA(ipa){
+  if(!ipa)return;
+  if(!S.sound){toast("发音已关闭，点右上角喇叭开启");return;}
+  const clean=String(ipa).replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹0-9\s]/g,"");
+  let target=null;
+  for(let i=0;i<clean.length&&!target;i++)
+    for(const t of IPA_TOKENS){if(clean.startsWith(t,i)){target=t;break;}}
+  if(!target){toast("这个音标暂无示例发音");return;}
+  speakText(IPA_SAY[target]);
+}
+function makeSayBtn(ipa){
+  const b=document.createElement("button");b.type="button";b.className="mini-say";
+  b.title="读示例字";b.setAttribute("aria-label","读示例字");b.innerHTML=SPEAKER_SVG;
+  b.addEventListener("click",ev=>{ev.stopPropagation();speakIPA(ipa);});
+  return b;
+}
+function syncSoundBtn(){
+  soundBtn.classList.toggle("off",!S.sound);
+  soundBtn.title=S.sound?"关闭发音":"开启发音";
+  $("sound-waves").style.display=S.sound?"":"none";
+  $("sound-slash").style.display=S.sound?"none":"";
+}
+soundBtn.addEventListener("click",()=>{
+  S.sound=!S.sound;
+  if(!S.sound&&"speechSynthesis" in window){try{speechSynthesis.cancel()}catch(e){}}
+  save();syncSoundBtn();if(S.sound)speakText("发音已开启");
+});
+syncSoundBtn();
+document.addEventListener("pointerdown",primeTTS,{once:true});
+
+// ---------- 音效 ----------
+let AC=null;
+function beep(freqs,dur=.11,type="sine",gap=.06,vol=.07){
+  try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+    if(AC.state==="suspended")AC.resume();
+    let t=AC.currentTime;
+    freqs.forEach(f=>{const o=AC.createOscillator(),g=AC.createGain();
+      o.type=type;o.frequency.value=f;
+      g.gain.setValueAtTime(.0001,t);
+      g.gain.exponentialRampToValueAtTime(vol,t+.012);
+      g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+      o.connect(g).connect(AC.destination);o.start(t);o.stop(t+dur+.03);t+=dur+gap;});
+  }catch(e){}
+}
+const sfxOk=()=>beep([660,880]);
+const sfxBad=()=>beep([180],.16,"triangle",0,.05);
+const sfxStage=()=>beep([523,659,784,1047],.1,"sine",.05);
+
+// ============================================================
+// 左侧目录（可点击任意目录项跳转）
+// ============================================================
+function stepTitle(sp,stageIdx,stepIdx){
+  if(sp.k==="quiz")return `${sp.c} ${sp.p||""}`.trim();
+  if(sp.k==="type")return (sp.t||"").split("\n")[0].slice(0,16);
+  if(sp.k==="verify")return "验证输入法";
+  return (sp.t||"").split("\n")[0].slice(0,16);
+}
+function stageDoneCount(stageIdx){
+  const st=STAGES[stageIdx];let n=0;
+  st.steps.forEach((sp,i)=>{if(S.doneSteps[stageIdx+"-"+i])n++;});
+  return n;
+}
+function renderTOC(){
+  tocEl.innerHTML="";
+  const sec=document.createElement("div");sec.className="toc-sec";sec.textContent="练习模式";
+  tocEl.appendChild(sec);
+
+  const free=document.createElement("button");free.className="toc-free"+(mode==="free"?" on":"");
+  free.innerHTML=`<span class="ic">✦</span><span>自由练习</span><span class="ct">${freeN} 词</span>`;
+  free.addEventListener("click",()=>{enterFree();});
+  tocEl.appendChild(free);
+
+  const s2=document.createElement("div");s2.className="toc-sec";s2.textContent="课程目录";
+  tocEl.appendChild(s2);
+
+  STAGE_LIST.forEach(st=>{
+    const idx=st.idx, isCur=(mode==="learn"&&idx===S.si);
+    const dn=stageDoneCount(idx), tot=st.steps.length;
+    const isDone=dn>=tot;
+    const row=document.createElement("button");
+    row.className="toc-item"+(isCur?" on":"")+(isDone?" done":"");
+    const open=!!expandedStage[idx];
+    row.innerHTML=`<span class="tw">${isDone?"✓":(isCur?"●":"")}</span>
+      <span class="nm">${st.nav}</span>
+      <span class="mini">${dn}/${tot}</span>
+      <span class="toc-caret${open?" open":""}">${open?"▾":"▸"}</span>`;
+    // 点击标题 → 跳转到该版块第一步（主行为）
+    row.addEventListener("click",ev=>{
+      if(ev.target.classList.contains("toc-caret"))return;   // 箭头单独处理
+      gotoStage(idx);
+    });
+    // 点击箭头 → 只展开/收起，不跳转
+    const caret=row.querySelector(".toc-caret");
+    caret.addEventListener("click",ev=>{
+      ev.stopPropagation();
+      expandedStage[idx]=!expandedStage[idx];
+      renderTOC();
+    });
+    tocEl.appendChild(row);
+    if(open){
+      const box=document.createElement("div");box.className="toc-steps";
+      st.steps.forEach((sp,i)=>{
+        const k=st.idx+"-"+i;
+        const b=document.createElement("button");
+        const cur_=(mode==="learn"&&idx===S.si&&i===S.pi);
+        b.className="toc-step"+(cur_?" on":"")+(S.doneSteps[k]?" done":"");
+        const tag=sp.k==="quiz"?"题":sp.k==="type"?"练":sp.k==="verify"?"验":"讲";
+        b.innerHTML=`<span class="k">${tag}</span><span class="tx">${stepTitle(sp,idx,i)}</span>`;
+        b.addEventListener("click",()=>gotoStep(idx,i));
+        box.appendChild(b);
+      });
+      tocEl.appendChild(box);
+    }
+  });
+  // 进度
+  const doneCount=STAGE_LIST.filter(st=>stageDoneCount(st.idx)>=st.steps.length).length;
+  progNum.textContent=`${doneCount} / ${totalStages}`;
+  progLabel.textContent="课程进度";
+  const allSteps=STAGE_LIST.reduce((s,st)=>s+st.steps.length,0);
+  const doneSteps=STAGE_LIST.reduce((s,st)=>s+stageDoneCount(st.idx),0);
+  progFill.style.width=(allSteps?doneSteps/allSteps*100:0)+"%";
+}
+function gotoStage(idx){
+  mode="learn";S.si=idx;S.pi=0;busy=false;
+  expandedStage[idx]=true;      // 跳转后自动展开该版块，目录始终呈现当前上下文
+  renderTOC();renderDots();render();
+}
+function gotoStep(si,pi){
+  mode="learn";S.si=si;S.pi=Math.min(pi,STAGES[si].steps.length-1);busy=false;
+  expandedStage[si]=true;
+  renderTOC();renderDots();render();
+}
+
+// ---------- 中央：面包屑 + 步进点 ----------
+function renderCrumb(){
+  if(mode==="free"){
+    const pos=freeHistory.length>0?freeHistory.indexOf(lastFree)+1:freeN+1;
+    crumbEl.innerHTML=`<b>自由练习</b><span class="sep">/</span><span class="cur">第 ${pos} 题</span>`;
+    return;
+  }
+  const st=STAGES[S.si];
+  const stName=st.id==="install"?"安装":st.nav;
+  crumbEl.innerHTML=`<b>${stName}</b><span class="sep">/</span>
+    <span>第 ${S.pi+1} / ${st.steps.length} 步</span>`;
+}
+function renderDots(){
+  dotsEl.innerHTML="";
+  if(mode==="free"){dotsEl.innerHTML=`<span style="font-size:11px;color:var(--text-3);letter-spacing:.1em">随机出题 · 共 ${FREE.length} 词</span>`;return;}
+  const steps=STAGES[S.si].steps;
+  steps.forEach((sp,i)=>{
+    const d=document.createElement("button");
+    d.className="dot"+(S.doneSteps[S.si+"-"+i]?" done":"")+(i===S.pi?" on":"");
+    d.title=`第 ${i+1} 步：${stepTitle(sp,S.si,i)}`;
+    d.addEventListener("click",()=>gotoStep(S.si,i));
+    dotsEl.appendChild(d);
+  });
+}
+
+// ============================================================
+// 右栏：要点 / 速查 / 规则 / 错题
+// ============================================================
+function buildRefPane(){
+  const box=$("pane-ref");box.innerHTML="";
+  const mk=(title,head,rows)=>{
+    const h=document.createElement("div");h.className="rt-h";h.textContent=title;box.appendChild(h);
+    const tb=document.createElement("table");tb.className="rt-table";
+    const hr=document.createElement("tr");
+    head.forEach(x=>{const th=document.createElement("th");th.textContent=x;hr.appendChild(th);});
+    tb.appendChild(hr);
+    rows.forEach(r=>{
+      const tr=document.createElement("tr");
+      r.forEach((cell,ci)=>{
+        const td=document.createElement("td");
+        td.textContent=cell||"";
+        if(ci===1){td.className="ipa";td.appendChild(makeSayBtn(cell));}
+        else if(ci===2)td.className="keys";
+        tr.appendChild(td);
+      });
+      tb.appendChild(tr);
+    });
+    box.appendChild(tb);
+  };
+  mk("声母",["拼音","IPA","按键"],REF.initials);
+  mk("单元音",["拼音","IPA","按键"],REF.vowels);
+  mk("a 的音位变体",["环境","IPA","按键"],REF.aVariants);
+  mk("e 的音位变体",["环境","IPA","按键"],REF.eVariants);
+  mk("i 的音位变体",["环境","IPA","按键"],REF.iVariants);
+  mk("声调",["调类","调值"],REF.tones);
+  mk("特殊符号",["用途","符号","按键"],REF.specials);
+  const note=document.createElement("div");note.className="rt-note";
+  note.innerHTML="<b>本课记法说明</b><br>ɿ / ʅ 是汉语语言学传统的舌尖元音记法，通用 IPA 中也常写作 ɹ̩ / ɻ̩；本课沿用以保持与教材一致。<br>ɺ 在本课约定为「儿化卷舌标记」。<br>点每行 IPA 右侧的喇叭，会朗读最接近的普通话示例字（如 pʰ → 怕）。";
+  box.appendChild(note);
+}
+function buildRulesPane(){
+  const box=$("pane-rules");box.innerHTML="";
+  const h=document.createElement("div");h.className="rt-h";h.textContent="变调规则完整版";box.appendChild(h);
+  const tb=document.createElement("table");tb.className="rt-table";
+  const hr=document.createElement("tr");["规则","调值变化","例词"].forEach(x=>{const th=document.createElement("th");th.textContent=x;hr.appendChild(th);});
+  tb.appendChild(hr);
+  REF.sandhi.forEach(r=>{
+    const tr=document.createElement("tr");
+    r.forEach((cell,ci)=>{const td=document.createElement("td");td.textContent=cell||"";
+      if(ci===1)td.style.color="var(--accent)";tr.appendChild(td);});
+    tb.appendChild(tr);
+  });
+  box.appendChild(tb);
+  const h2=document.createElement("div");h2.className="rt-h";h2.textContent="三条核心规律";box.appendChild(h2);
+  const p=document.createElement("div");p.className="rt-p";
+  p.innerHTML="① <b>送气对立</b>：b d g → p t k（不送气），p t k → pʰ tʰ kʰ（送气）<br>② <b>音位变体</b>：a 有 a / A / ɑ / æ 四种，e 有 ɤ / e / ə / ɛ 四种，i 有 i / ɿ / ʅ 三种<br>③ <b>调值必标</b>：除轻声外，每个音节都要带调值上标";
+  box.appendChild(p);
+}
+function buildPointsPane(){
+  const box=$("pane-points");box.innerHTML="";
+  if(mode==="free"){
+    const h=document.createElement("div");h.className="rt-h";h.textContent="自由练习";box.appendChild(h);
+    const p=document.createElement("div");p.className="rt-p";
+    p.innerHTML="从 <b>"+FREE.length+"</b> 个词中随机出题，只给汉字、不给拼音，考察声母 / 韵母 / 变体 / 声调 / 儿化 / 变调的综合掌握。<br>答错的词会自动进入右侧「错题」页，按错误次数加权复习。";
+    box.appendChild(p);
+    const b=document.createElement("button");b.className="rt-btn primary";b.textContent="返回学习模式";
+    b.addEventListener("click",()=>exitFree());
+    box.appendChild(b);
+    return;
+  }
+  const st=STAGES[S.si];
+  const h=document.createElement("div");h.className="rt-h";
+  h.textContent=(st.id==="install"?"安装":st.nav)+" · 本节要点";box.appendChild(h);
+  const says=st.steps.filter(s=>s.k==="say");
+  says.slice(0,4).forEach(s=>{
+    const p=document.createElement("div");p.className="rt-p";
+    p.textContent=(s.t||"").split("\n").filter(Boolean).slice(0,2).join(" ");
+    box.appendChild(p);
+  });
+  const h2=document.createElement("div");h2.className="rt-h";h2.textContent="本节题目";box.appendChild(h2);
+  const typed=st.steps.filter(s=>s.k==="quiz"||s.k==="type");
+  if(!typed.length){
+    const e=document.createElement("div");e.className="rt-empty";
+    e.textContent="本节是教学说明，没有需要键入的题目";
+    box.appendChild(e);
+    return;
+  }
+  const tb=document.createElement("table");tb.className="rt-table";
+  const hr=document.createElement("tr");["内容","正确答案","按键"].forEach(x=>{const th=document.createElement("th");th.textContent=x;hr.appendChild(th);});
+  tb.appendChild(hr);
+  st.steps.filter(s=>s.k==="quiz"||s.k==="type").forEach(s=>{
+    const tr=document.createElement("tr");
+    const c=document.createElement("td");
+    c.textContent=s.k==="quiz"?`${s.c} ${s.p||""}`:(s.t||"").split("\n")[0].slice(0,14);
+    tr.appendChild(c);
+    const a=document.createElement("td");a.className="ipa";a.textContent=s.a||"—";tr.appendChild(a);
+    const k=document.createElement("td");k.className="keys";k.textContent=s.keys||"—";tr.appendChild(k);
+    tb.appendChild(tr);
+  });
+  box.appendChild(tb);
+}
+function updateWrongCount(){
+  const n=Object.keys(wrongBook).length;
+  const el=$("wrong-cnt");
+  el.textContent=n>9?"9+":n;
+  el.classList.toggle("hide",n===0);
+}
+function buildWrongPane(){
+  const box=$("pane-wrong");box.innerHTML="";
+  const keys=Object.keys(wrongBook);
+  if(!keys.length){
+    box.innerHTML=`<div class="rt-empty">还没有错题<br>答错时会自动收进这里</div>`;
+    return;
+  }
+  const sorted=keys.map(k=>({key:k,...wrongBook[k]}))
+    .sort((a,b)=>(b.wrongCount||1)-(a.wrongCount||1));
+  const h=document.createElement("div");h.className="rt-h";h.textContent="按版块统计";box.appendChild(h);
+  const stageMap={};
+  sorted.forEach(it=>{
+    const si=it.type==="free"?"free":parseInt(it.key.split("-")[0]);
+    const name=it.type==="free"?"自由练习":(STAGES[si]&&STAGES[si].nav||"—");
+    if(!stageMap[name])stageMap[name]={count:0,items:0};
+    stageMap[name].count+=(it.wrongCount||1);stageMap[name].items++;
+  });
+  const maxC=Math.max(...Object.values(stageMap).map(s=>s.count));
+  Object.entries(stageMap).sort((a,b)=>b[1].count-a[1].count).forEach(([name,s])=>{
+    const row=document.createElement("div");row.className="wrong-stat-row";
+    row.innerHTML=`<span class="ws-name">${name}</span><span class="ws-num">${s.count} 次 · ${s.items} 题</span>
+      <span class="ws-bar-wrap"><span class="ws-bar" style="width:${(s.count/maxC*100).toFixed(0)}%"></span></span>`;
+    box.appendChild(row);
+  });
+  const h2=document.createElement("div");h2.className="rt-h";h2.textContent=`错题清单（${keys.length}）`;box.appendChild(h2);
+  const wrap=document.createElement("div");
+  sorted.forEach(it=>{
+    const si=it.type==="free"?null:parseInt(it.key.split("-")[0]);
+    const src=it.type==="free"?"自由":(STAGES[si]&&STAGES[si].nav||"—");
+    const row=document.createElement("div");row.className="wrong-row";
+    const py=it.p||(it.type==="free"?(FREE_PY[it.c]||""):"");
+    row.innerHTML=`<span class="ch">${it.c||"—"}</span>
+      <span class="py">${py||src}</span>
+      ${it.lastWrongInput?`<span class="last">${it.lastWrongInput}</span>`:""}
+      <span class="wt">×${it.wrongCount||1}</span>
+      <span class="ipa">${it.a||"—"}</span>`;
+    const del=document.createElement("button");del.className="mini-say";del.title="移除";
+    del.innerHTML="✕";del.style.fontSize="11px";
+    del.addEventListener("click",ev=>{ev.stopPropagation();
+      delete wrongBook[it.key];save();updateWrongCount();buildWrongPane();});
+    row.appendChild(del);
+    wrap.appendChild(row);
+  });
+  box.appendChild(wrap);
+  const b=document.createElement("button");b.className="rt-btn primary";b.style.marginTop="12px";
+  b.textContent="进入错题强化练习";
+  b.addEventListener("click",()=>{enterWrongDrill();});
+  box.appendChild(b);
+}
+function switchRightTab(p){
+  rightTab=p;
+  document.querySelectorAll(".rt-tab").forEach(t=>t.classList.toggle("on",t.dataset.pane===p));
+  document.querySelectorAll(".rt-pane").forEach(x=>x.classList.toggle("on",x.id==="pane-"+p));
+  if(p==="points")buildPointsPane();
+  if(p==="wrong")buildWrongPane();
+}
+document.querySelectorAll(".rt-tab").forEach(t=>{
+  t.addEventListener("click",()=>switchRightTab(t.dataset.pane));
+});
+$("right-toggle").addEventListener("click",()=>{
+  rightEl.classList.toggle("open");
+  if(rightTab==="points")buildPointsPane();
+});
+
+// ============================================================
+// 主体渲染
+// ============================================================
+function render(){
+  swap(()=>{
+    wrong=0;
+    const st=cur();
+    if(st.t){
+      revealText(promptEl,st.t);
+      if(st.link){
+        const a=document.createElement("a");
+        a.href=st.link;a.target="_blank";a.rel="noopener";
+        a.textContent=" "+st.link.replace("https://","");
+        a.style.animationDelay=(st.t.length*15)+"ms";a.className="ch";
+        promptEl.appendChild(a);
+      }
+    }
+    echoEl.style.display=(st.k==="say")?"none":"";
+    if(st.k==="quiz"){charEl.textContent=st.c;pyEl.textContent=st.p||"";}
+
+    const answered=isStepDone()&&(st.k==="type"||st.k==="quiz");
+    if(answered){
+      echoEl.textContent=st.a;echoEl.classList.add("ok");
+      hintEl.textContent="这题你答对过 · 按 → 继续，或点下方圆点回看";
+      ghost.value="";
+      renderFeedback("ok","已掌握","这题之前答对过，可以直接跳过。",null,null,null);
+    }
+    if(st.k==="quiz"&&st.c){
+      sayLabel.textContent="读「"+st.c+"」";sayBtn.style.display="";
+      sayBtn.onclick=()=>speakText(st.c);
+      if(S.autoSpeak&&!answered)setTimeout(()=>speakText(st.c),450);
+    }else if((st.k==="type"||st.k==="verify")&&st.a){
+      sayLabel.textContent="听音标";sayBtn.style.display="";
+      sayBtn.onclick=()=>speakIPA(st.a);
+    }
+    if(st.k==="verify"){
+      clearTimeout(verifyTimer);
+      verifyTimer=setTimeout(()=>{
+        if(mode!=="free"&&cur()&&cur().k==="verify"){
+          warnEl.innerHTML=`等了一会儿还没看到音标。先点一下页面让输入框拿到焦点，再确认已切到 <b>IPA (SIL)</b>。<br>实在不行可以跳过这一步。`;
+          warnEl.style.display="";
+          btnEl.textContent="暂时跳过，继续学习";btnEl.style.display="";
+          btnEl.onclick=()=>{if(!busy){wrong=0;next();}};
+        }
+      },4000);
+    }
+    if(st.k==="say"){
+      if(st.btn){btnEl.textContent=st.btn;btnEl.style.display="";btnEl.onclick=()=>{if(!busy&&mode!=="free")next();};}
+    }
+    renderCrumb();renderDots();renderTOC();
+    if(rightTab==="points")buildPointsPane();
+    syncNavBtns();
+  });
+  save();
+}
+function syncNavBtns(){
+  if(mode==="free"){
+    prevBtn.disabled=freeHistory.length<2;
+    nextBtn.textContent="下一题";nextBtn.disabled=false;
+    return;
+  }
+  prevBtn.disabled=(S.si===0&&S.pi===0);
+  const last=S.pi>=STAGES[S.si].steps.length-1;
+  nextBtn.disabled=false;
+  nextBtn.textContent=last?"完成本节":"下一题";
+}
+function stageDone(){
+  const stgIdx=S.si;
+  busy=true;                       // 动画期间锁定，防止重复触发
+  if(STAGES[stgIdx].id!=="install"&&!S.completed.includes(stgIdx))S.completed.push(stgIdx);
+  save();sfxStage();
+  swap(()=>{
+    revealText(promptEl,"✓ 「"+STAGES[stgIdx].nav+"」 完成",24);
+    hintEl.textContent="下一节："+(STAGE_LIST.find(s=>s.idx>stgIdx)||{nav:"自由练习"}).nav;
+  });
+  syncNavBtns();
+  setTimeout(()=>{
+    S.si=stgIdx+1;S.pi=0;
+    if(S.si>=STAGES.length){busy=false;courseDone();return;}
+    busy=false;render();
+  },900);
+}
+function startNext(){
+  S.si++;S.pi=0;
+  if(S.si>=STAGES.length){busy=false;return courseDone();}
+  busy=false;render();
+}
+function courseDone(){
+  S.done=true;
+  STAGES.forEach((_,i)=>{if(STAGES[i].id!=="install"&&!S.completed.includes(i))S.completed.push(i);});
+  save();sfxStage();
+  swap(()=>{
+    revealText(promptEl,"很棒！你已经学会了汉语 IPA 记音的全部内容：21 个声母、全部韵母与 a / e / i 音位变体、声调与变调、儿化和零声母。",20);
+    btnEl.textContent="进入自由练习";btnEl.style.display="";btnEl.onclick=enterFree;
+  });
+  renderTOC();renderDots();syncNavBtns();
+}
+function next(){
+  if(busy)return;
+  if(mode==="free")return nextFree();
+  S.pi++;
+  if(S.pi>=STAGES[S.si].steps.length)return stageDone();
+  render();
+}
+function prev(){
+  if(busy)return;
+  if(mode==="free")return prevFree();
+  if(S.pi>0){S.pi--;render();return;}
+  if(S.si>0){S.si--;S.pi=STAGES[S.si].steps.length-1;render();}
+}
+
+// ---------- 判错 / 判对 ----------
+function acceptList(st){return [st.a,...(st.acc||[])].map(norm);}
+function succeed(){
+  busy=true;echoEl.classList.add("ok");sfxOk();
+  if(mode==="learn"&&(cur().k==="type"||cur().k==="quiz")){
+    S.doneSteps[stepKey()]=true;
+    const k=stepKey();
+    if(wrongBook[k]){delete wrongBook[k];updateWrongCount();}
+    save();
+  }
+  renderFeedback("ok","正确","这一步已经掌握，音标写法与声调都对上了。",null,null,null);
+  setTimeout(()=>{busy=false;mode==="free"?renderFree():next();},900);
+}
+function addWrong(key,entry){
+  if(wrongBook[key]){
+    wrongBook[key].wrongCount=(wrongBook[key].wrongCount||1)+1;
+    wrongBook[key].lastWrong=Date.now();
+    wrongBook[key].lastWrongInput=entry.lastWrongInput;
+  }else{wrongBook[key]={...entry,wrongCount:1,lastWrong:Date.now()};}
+  save();updateWrongCount();
+}
+function fail(st,v,key,extra){
+  wrong++;
+  sfxBad();
+  echoEl.classList.add("bad","shake");
+  setTimeout(()=>echoEl.classList.remove("shake"),420);
+
+  const ctx={lastWrongInput:v||""};
+  if(key){
+    ctx.type="learn";
+    const sp=STAGES[S.si].steps[S.pi];
+    ctx.c=sp.k==="quiz"?sp.c:"";
+    ctx.p=sp.k==="quiz"?(sp.p||""):"";
+    ctx.a=sp.a;
+    addWrong(key,ctx);
+  }else{
+    const q=FREE[lastFree];
+    ctx.type="free";ctx.c=q.c;ctx.p=FREE_PY[q.c]||"";ctx.a=q.a[0];
+    addWrong("free-"+lastFree,ctx);
+  }
+
+  // ===== 新的定位式反馈 =====
+  const issues=diagnoseDetailed(st.a,v);
+  const it=issues[0];
+  const more=issues.length>1?`（另外还有 ${issues.length-1} 处不同）`:"";
+  let title,why,fix,keys,rows;
+
+  if(it.exp&&it.got){
+    title=`第 ${it.pos+1} 个音位不对：应该是 ${it.exp}，你打成了 ${it.got}`;
+    rows=[{cls:"bad",txt:it.got},{cls:"arrow",txt:"→"},{cls:"good",txt:it.exp}];
+    why=it.why;
+    keys=it.keys;
+    fix=it.fix?`${it.fix}`:`改成 <span class="mono">${it.exp}</span> 再试一次。`;
+  }else if(it.exp&&!it.got){
+    title=`漏掉了第 ${it.pos+1} 个音位 ${it.exp}`;
+    rows=[{cls:"gone",txt:"（缺）"},{cls:"arrow",txt:"→"},{cls:"good",txt:it.exp}];
+    why=it.why;keys=it.keys;fix=it.fix||`补上 <span class="mono">${it.exp}</span>。`;
+  }else if(!it.exp&&it.got){
+    title=`多打了 ${it.got}`;
+    rows=[{cls:"bad",txt:it.got},{cls:"arrow",txt:"→"},{cls:"gone",txt:"（删）"}];
+    why=it.why;fix=it.fix||"删掉多余的符号。";
+  }else{
+    title=it.title||"再试一次";
+    why=it.why;fix=it.fix;keys=it.keys;
+  }
+  // 题库自带的 err 作为补充（不覆盖定位信息）
+  if(st.err&&(!why||why.length<10)) why=`${why?why+" ":""}<span class="hl">${st.err}</span>`;
+  if(extra) why=`${why||""}${extra}`;
+
+  // 第 2 次错 → 补充完整答案与按键（原版三级提示的后两级保留）
+  if(wrong>=2){
+    if(it.pos!=null){
+      title=it.got
+        ?`第 ${it.pos+1} 个音位不对：应该是 ${it.exp}，你打成了 ${it.got}`
+        :`第 ${it.pos+1} 个音位不对：你漏掉了 ${it.exp}`;
+    }
+    fix=`完整答案是 <span class="mono">${st.a}</span>${more}。照着按键敲一遍，再重打一次。`;
+    keys=unitKeys(st.a);
+  }
+  renderFeedback("bad",title,why,fix,keys,rows);
+  hintEl.textContent="";
+  ghost.value="";echoEl.textContent="";echoEl.classList.remove("bad");
+}
+function submit(){
+  if(busy)return;
+  if(mode==="free")return submitFree();
+  const st=cur();
+  if(isStepDone()&&(st.k==="type"||st.k==="quiz"))return next();
+  if(st.k==="say")return next();
+  const v=norm(ghost.value);
+  const key=S.si+"-"+S.pi;
+  if(st.k==="verify"){
+    if(v===norm(st.a))return succeed();
+    if(/^a=?$/.test(ghost.value.trim())){
+      warnEl.innerHTML=`你打出的是原始字母 <b>a=</b>，不是音标 <b>ɑ</b>。<br>请检查：<br>①是否按 <b>${KEY_HINT}</b> 切到「IPA (SIL)」<br>②是否先点了一下页面（让输入框拿到焦点）`;
+    }else{
+      warnEl.innerHTML="没打出想要的音标？确认输入法已切到 <b>IPA (SIL)</b>。<br>如果暂时打不出来，可以先跳过。";
+    }
+    warnEl.style.display="";
+    btnEl.textContent="暂时跳过，继续学习";btnEl.style.display="";
+    btnEl.onclick=()=>{if(!busy){wrong=0;next();}};
+    ghost.value="";echoEl.textContent="";
+    return;
+  }
+  if(!v)return;
+  if(acceptList(st).includes(v))succeed();
+  else fail(st,v,key);
+}
+ghost.addEventListener("input",()=>{
+  const v=ghost.value;
+  echoEl.textContent=v;
+  echoEl.classList.remove("pop");void echoEl.offsetWidth;echoEl.classList.add("pop");
+  if(busy)return;
+  if(mode==="learn"){
+    const st=cur();const nv=norm(v);
+    if(st.k==="type"&&acceptList(st).includes(nv))succeed();
+    if(st.k==="verify"){
+      if(nv===norm(st.a)){clearTimeout(verifyTimer);warnEl.style.display="none";btnEl.style.display="none";succeed();}
+      else if(v.length>=2){
+        clearTimeout(verifyTimer);
+        warnEl.innerHTML=/^a=?$/.test(v.trim())
+          ?`你打出的是原始字母 <b>a=</b>，不是音标 <b>ɑ</b>。<br>①是否按 <b>${KEY_HINT}</b> 切到「IPA (SIL)」<br>②是否先点了一下页面`
+          :"还没打出正确的音标。确认输入法切到了 <b>IPA (SIL)</b>。";
+        warnEl.style.display="";
+        btnEl.textContent="暂时跳过，继续学习";btnEl.style.display="";
+        btnEl.onclick=()=>{if(!busy){wrong=0;next();}};
+      }
+    }
+  }
+});
+ghost.addEventListener("keydown",e=>{
+  if(e.ctrlKey||e.metaKey||e.altKey)return;
+  if(e.key==="Enter"||e.key===" "||e.key==="ArrowRight"){
+    e.preventDefault();e.stopPropagation();
+    if(refOverlayOpen())return;
+    if(!busy)submit();
+  }
+});
+function refOverlayOpen(){return false;}
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape")return;
+  if(e.ctrlKey||e.metaKey||e.altKey)return;
+  if(busy)return;
+  if(e.key==="ArrowLeft"){e.preventDefault();prev();}
+  else if(e.key==="ArrowRight"&&document.activeElement!==ghost){e.preventDefault();submit();}
+});
+prevBtn.addEventListener("click",()=>{if(!busy)prev();});
+nextBtn.addEventListener("click",()=>{if(!busy)next();});
+
+// ============================================================
+// 自由练习
+// ============================================================
+function enterFree(){
+  mode="free";
+  freeDeck=FREE.map((_,i)=>i);shuffle(freeDeck);freeDeckIdx=0;freeHistory=[];
+  renderTOC();renderDots();renderFree();switchRightTab("points");
+}
+function exitFree(){
+  mode="learn";
+  for(let i=0;i<STAGES.length;i++){
+    if(STAGES[i].id==="install")continue;
+    if(!S.completed.includes(i)){S.si=i;S.pi=0;break;}
+    S.si=i;S.pi=0;
+  }
+  renderTOC();renderDots();render();
+}
+function shuffle(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}}
+function nextFreeIndex(){
+  if(freeDeckIdx>=freeDeck.length){shuffle(freeDeck);freeDeckIdx=0;}
+  let idx=freeDeck[freeDeckIdx++];
+  if(idx===lastFree&&FREE.length>1)idx=freeDeck[freeDeckIdx++%freeDeck.length];
+  return idx;
+}
+function renderFree(){
+  swap(()=>{
+    wrong=0;
+    lastFree=nextFreeIndex();
+    freeHistory.push(lastFree);if(freeHistory.length>40)freeHistory.shift();
+    revealText(promptEl,"打出这个字的国际音标（含声调）",18);
+    charEl.textContent=FREE[lastFree].c;
+    sayLabel.textContent="读「"+FREE[lastFree].c+"」";sayBtn.style.display="";
+    sayBtn.onclick=()=>speakText(FREE[lastFree].c);
+    if(S.autoSpeak)setTimeout(()=>speakText(FREE[lastFree].c),450);
+    renderCrumb();renderDots();renderTOC();syncNavBtns();
+    if(rightTab==="points")buildPointsPane();
+  });
+}
+function submitFree(){
+  const q=FREE[lastFree];
+  const v=norm(ghost.value);
+  if(!v)return;
+  if(q.a.map(norm).includes(v)){
+    freeN++;S.freeN=freeN;
+    const wk="free-"+lastFree;
+    if(wrongBook[wk]){delete wrongBook[wk];updateWrongCount();}
+    save();
+    busy=true;echoEl.classList.add("ok");sfxOk();
+    renderFeedback("ok","正确",`「${q.c}」${FREE_PY[q.c]||""} 的音标写对了。`,null,null,null);
+    setTimeout(()=>{busy=false;renderFree();},900);
+  }else{
+    wrong++;sfxBad();
+    echoEl.classList.add("bad","shake");
+    setTimeout(()=>echoEl.classList.remove("shake"),420);
+    const ctx={type:"free",c:q.c,p:FREE_PY[q.c]||"",a:q.a[0],lastWrongInput:v||""};
+    addWrong("free-"+lastFree,ctx);
+    const st={a:q.a[0],keys:FREE_KEYS[q.c]||"",err:null};
+    fail(st,v,null);
+  }
+}
+function prevFree(){
+  if(freeHistory.length<2)return;
+  freeHistory.pop();                 // 丢掉当前题，回到上一题
+  lastFree=freeHistory[freeHistory.length-1];
+  renderFreeCurrent();
+}
+function nextFree(){
+  renderFree();                       // 抽新题并压栈
+}
+// 渲染当前 lastFree（不重新抽题），用于前进/回退
+function renderFreeCurrent(){
+  swap(()=>{
+    wrong=0;
+    revealText(promptEl,"打出这个字的国际音标（含声调）",18);
+    charEl.textContent=FREE[lastFree].c;
+    sayLabel.textContent="读「"+FREE[lastFree].c+"」";sayBtn.style.display="";
+    sayBtn.onclick=()=>speakText(FREE[lastFree].c);
+    if(S.autoSpeak)setTimeout(()=>speakText(FREE[lastFree].c),450);
+    renderCrumb();renderDots();renderTOC();syncNavBtns();
+    if(rightTab==="points")buildPointsPane();
+  });
+}
+
+// ---------- 错题强化练习 ----------
+let drill=null;
+function enterWrongDrill(){
+  const keys=Object.keys(wrongBook);
+  if(!keys.length){toast("还没有错题");return;}
+  const items=keys.map(k=>({key:k,...wrongBook[k]}));
+  drill=weightedPick(items);
+  mode="free";
+  renderTOC();renderDots();renderDrill();
+}
+function weightedPick(items){
+  const total=items.reduce((s,it)=>s+(it.wrongCount||1),0);
+  let r=Math.random()*total;
+  for(const it of items){r-=(it.wrongCount||1);if(r<=0)return it;}
+  return items[items.length-1];
+}
+function renderDrill(){
+  swap(()=>{
+    wrong=0;
+    revealText(promptEl,"错题强化 · 写出这个字的音标",18);
+    charEl.textContent=drill.c||"";
+    pyEl.textContent=drill.p||"";
+    sayLabel.textContent="读「"+(drill.c||"")+"」";sayBtn.style.display="";
+    sayBtn.onclick=()=>speakText(drill.c||"");
+    if(S.autoSpeak)setTimeout(()=>speakText(drill.c||""),450);
+    renderCrumb();renderDots();renderTOC();syncNavBtns();
+  });
+}
+document.addEventListener("keydown",e=>{
+  if(drill&&(e.key==="Enter"||e.key===" "||e.key==="ArrowRight")){
+    if(e.ctrlKey||e.metaKey||e.altKey)return;
+    e.preventDefault();
+    const v=norm(ghost.value);if(!v||!drill)return;
+    if(v===norm(drill.a)){
+      sfxOk();echoEl.classList.add("ok");
+      renderFeedback("ok","正确","这道错题已经拿下，已从错题本移出。",null,null,null);
+      delete wrongBook[drill.key];save();updateWrongCount();buildWrongPane();
+      setTimeout(()=>{drill=null;renderFree();},900);
+    }else{
+      sfxBad();echoEl.classList.add("bad");
+      const issues=diagnoseDetailed(drill.a,v);
+      const it=issues[0];
+      renderFeedback("bad",`第 ${it.pos+1} 个音位不对：应该是 ${it.exp}，你打成了 ${it.got}`,it.why,
+        `完整答案是 <span class="mono">${drill.a}</span>，你上次写的是 <span class="mono">${v}</span>。`,
+        unitKeys(drill.a),[{cls:"bad",txt:it.got},{cls:"arrow",txt:"→"},{cls:"good",txt:it.exp}]);
+      ghost.value="";echoEl.textContent="";echoEl.classList.remove("bad");
+    }
+  }
+});
+
+// ============================================================
+// 启动
+// ============================================================
+buildRefPane();
+buildRulesPane();
+updateWrongCount();
+if(S.done){mode="free";enterFree();}
+else{renderTOC();renderDots();render();}
+switchRightTab("points");
+</script>
+</body>
+</html>
